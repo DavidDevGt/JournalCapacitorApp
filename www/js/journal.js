@@ -529,30 +529,56 @@ class JournalManager {
                 window.ui.showToast('Error al exportar el backup', 'error');
             }
         }
-    }
-
-    async importEntries(file) {
-        if (!window.db || !file) return;
+    }    async importEntries(file) {
+        if (!window.db || !file) {
+            if (window.ui) {
+                window.ui.showToast('No se pudo acceder a la base de datos o archivo', 'error');
+            }
+            return;
+        }
 
         try {
+            // Validate file size (max 10MB)
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            if (file.size > maxSize) {
+                throw new Error(`El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo: 10MB`);
+            }
+
+            // Validate file type
+            if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+                throw new Error('Solo se permiten archivos JSON (.json)');
+            }
+
             const text = await file.text();
-            const data = JSON.parse(text);
+            
+            // Validate JSON structure before parsing
+            if (!text.trim()) {
+                throw new Error('El archivo está vacío');
+            }
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (parseError) {
+                throw new Error('Archivo JSON inválido: ' + parseError.message);
+            }
 
             const result = await window.db.importData(data);
 
             if (result.success) {
                 await this.loadTodayEntry();
                 if (window.ui) {
-                    window.ui.showToast('Datos importados correctamente', 'success');
+                    const message = result.message || 'Datos importados correctamente';
+                    window.ui.showToast(message, 'success');
                     window.ui.loadAllEntries();
                 }
             } else {
-                throw new Error(result.error);
+                throw new Error(result.error || 'Error desconocido durante la importación');
             }
         } catch (error) {
             console.error('Error importing entries:', error);
             if (window.ui) {
-                window.ui.showToast('Error al importar los datos', 'error');
+                window.ui.showToast(error.message || 'Error al importar los datos', 'error');
             }
         }
     }

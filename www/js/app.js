@@ -6,7 +6,9 @@ import journal from './journal.js';
 class DailyJournalApp {
     constructor() {
         this.isInitialized = false;
-        this.isReady = false;
+        this.activeModal = null;
+        this.resizeHandler = null;
+        this.orientationHandler = null;
     }
 
     async init() {
@@ -38,12 +40,9 @@ class DailyJournalApp {
             window.journal = journal; // Make journal globally available
 
             // Setup additional UI components
-            this.setupAdditionalUI();
-
-            // Hide loading screen
+            this.setupAdditionalUI();            // Hide loading screen
             setTimeout(() => {
                 ui.hideLoading();
-                this.isReady = true;
                 console.log('✅ Daily Journal App initialized successfully!');
             }, 1000);
 
@@ -74,7 +73,7 @@ class DailyJournalApp {
             // Handle app state changes
             App.addListener('appStateChange', ({ isActive }) => {
                 console.log('App state changed. Is active:', isActive);
-                if (isActive && this.isReady) {
+                if (isActive && this.isInitialized) {
                     // App became active - refresh current entry
                     journal.loadTodayEntry();
                 } else if (!isActive && journal.hasUnsavedChanges) {
@@ -118,9 +117,7 @@ class DailyJournalApp {
             console.warn('Some Capacitor features are not available:', error);
             // Continue with web-only features
         }
-    }
-
-    setupAdditionalUI() {
+    }    setupAdditionalUI() {
         // Setup calendar navigation
         ui.setupCalendarNavigation();
 
@@ -139,17 +136,19 @@ class DailyJournalApp {
         // Setup settings
         this.setupSettings();
 
-        // Handle window resize for responsive design
-        window.addEventListener('resize', this.debounce(() => {
+        // Handle window resize for responsive design - store reference for cleanup
+        this.resizeHandler = this.debounce(() => {
             this.handleResize();
-        }, 250));
+        }, 250);
+        window.addEventListener('resize', this.resizeHandler);
 
-        // Handle orientation change
-        window.addEventListener('orientationchange', () => {
+        // Handle orientation change - store reference for cleanup
+        this.orientationHandler = () => {
             setTimeout(() => {
                 this.handleResize();
             }, 500);
-        });
+        };
+        window.addEventListener('orientationchange', this.orientationHandler);
 
         // Setup PWA install prompt
         this.setupPWAInstall();
@@ -165,9 +164,14 @@ class DailyJournalApp {
         menuBtn.addEventListener('click', () => {
             this.showMenu();
         });
-    }
+    }    showMenu() {
+        // Close existing menu to prevent memory leaks
+        const existingMenu = document.getElementById('menu-overlay');
+        if (existingMenu) {
+            this.cleanupMenuListeners(existingMenu);
+            existingMenu.remove();
+        }
 
-    showMenu() {
         // Create a simple menu overlay
         const menuHTML = `
             <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center sm:justify-center">
@@ -181,7 +185,7 @@ class DailyJournalApp {
                         </button>
                     </div>
                     
-                    <button class="menu-item w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick="app.showStats()">
+                    <button id="stats-menu-btn" class="menu-item w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <div class="flex items-center space-x-3">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
@@ -190,7 +194,7 @@ class DailyJournalApp {
                         </div>
                     </button>
 
-                    <button class="menu-item w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick="app.showSettings()">
+                    <button id="settings-menu-btn" class="menu-item w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <div class="flex items-center space-x-3">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -200,7 +204,7 @@ class DailyJournalApp {
                         </div>
                     </button>
 
-                    <button class="menu-item w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick="journal.exportEntries()">
+                    <button id="export-menu-btn" class="menu-item w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <div class="flex items-center space-x-3">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -209,7 +213,7 @@ class DailyJournalApp {
                         </div>
                     </button>
 
-                    <button class="menu-item w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick="app.showAbout()">
+                    <button id="about-menu-btn" class="menu-item w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <div class="flex items-center space-x-3">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -223,34 +227,86 @@ class DailyJournalApp {
 
         document.body.insertAdjacentHTML('beforeend', menuHTML);
 
-        // Setup close functionality
+        // Setup close functionality with proper cleanup
         const overlay = document.getElementById('menu-overlay');
         const closeBtn = document.getElementById('close-menu');
+        const statsBtn = document.getElementById('stats-menu-btn');
+        const settingsBtn = document.getElementById('settings-menu-btn');
+        const exportBtn = document.getElementById('export-menu-btn');
+        const aboutBtn = document.getElementById('about-menu-btn');
 
         const closeMenu = () => {
             if (overlay) {
+                this.cleanupMenuListeners(overlay);
                 overlay.remove();
             }
         };
 
+        // Store references for cleanup
+        const handleCloseClick = () => closeMenu();
+        const handleOverlayClick = (e) => {
+            if (e.target === overlay) closeMenu();
+        };
+        const handleStatsClick = () => { closeMenu(); this.showStats(); };
+        const handleSettingsClick = () => { closeMenu(); this.showSettings(); };
+        const handleExportClick = () => { closeMenu(); journal.exportEntries(); };
+        const handleAboutClick = () => { closeMenu(); this.showAbout(); };
+
         if (closeBtn) {
-            closeBtn.addEventListener('click', closeMenu);
+            closeBtn.addEventListener('click', handleCloseClick);
+            closeBtn._cleanup = () => closeBtn.removeEventListener('click', handleCloseClick);
         }
 
         if (overlay) {
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    closeMenu();
-                }
-            });
+            overlay.addEventListener('click', handleOverlayClick);
+            overlay._cleanup = () => overlay.removeEventListener('click', handleOverlayClick);
+        }
+
+        if (statsBtn) {
+            statsBtn.addEventListener('click', handleStatsClick);
+            statsBtn._cleanup = () => statsBtn.removeEventListener('click', handleStatsClick);
+        }
+
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', handleSettingsClick);
+            settingsBtn._cleanup = () => settingsBtn.removeEventListener('click', handleSettingsClick);
+        }
+
+        if (exportBtn) {
+            exportBtn.addEventListener('click', handleExportClick);
+            exportBtn._cleanup = () => exportBtn.removeEventListener('click', handleExportClick);
+        }
+
+        if (aboutBtn) {
+            aboutBtn.addEventListener('click', handleAboutClick);
+            aboutBtn._cleanup = () => aboutBtn.removeEventListener('click', handleAboutClick);
         }
     }
 
-    setupSettings() {
-        // Settings will be handled through the menu
-    }
+    cleanupMenuListeners(menuElement) {
+        if (!menuElement) return;
+        
+        const elementsWithCleanup = menuElement.querySelectorAll('*');
+        elementsWithCleanup.forEach(element => {
+            if (element._cleanup && typeof element._cleanup === 'function') {
+                element._cleanup();
+            }
+        });
+        
+        if (menuElement._cleanup && typeof menuElement._cleanup === 'function') {
+            menuElement._cleanup();
+        }
+    }    setupSettings() {
+        // Settings are handled through the menu system
+        // All settings functionality is managed in showSettings() method
+        console.log('Settings system initialized - accessible through menu');
+    }async showStats() {
+        // Close existing modal
+        if (this.activeModal) {
+            this.cleanupMenuListeners(this.activeModal);
+            this.activeModal.remove();
+        }
 
-    async showStats() {
         const stats = await journal.getWritingStats();
         if (!stats) return;
 
@@ -291,34 +347,40 @@ class DailyJournalApp {
             </div>
         `;
 
-        // Close existing menu
-        const existingMenu = document.getElementById('menu-overlay');
-        if (existingMenu) existingMenu.remove();
-
         document.body.insertAdjacentHTML('beforeend', statsHTML);
 
-        const closeBtn = document.getElementById('close-stats');
         const modal = document.getElementById('stats-modal');
+        const closeBtn = document.getElementById('close-stats');
+        this.activeModal = modal;
 
         const closeStats = () => {
-            if (modal) modal.remove();
+            if (modal) {
+                this.cleanupMenuListeners(modal);
+                modal.remove();
+                this.activeModal = null;
+            }
+        };
+
+        const handleCloseClick = () => closeStats();
+        const handleModalClick = (e) => {
+            if (e.target === modal) closeStats();
         };
 
         if (closeBtn) {
-            closeBtn.addEventListener('click', closeStats);
+            closeBtn.addEventListener('click', handleCloseClick);
+            closeBtn._cleanup = () => closeBtn.removeEventListener('click', handleCloseClick);
         }
 
         if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeStats();
-            });
+            modal.addEventListener('click', handleModalClick);
+            modal._cleanup = () => modal.removeEventListener('click', handleModalClick);
         }
-    }
-
-    showSettings() {
-        // Close existing menu
-        const existingMenu = document.getElementById('menu-overlay');
-        if (existingMenu) existingMenu.remove();
+    }    showSettings() {
+        // Close existing modal
+        if (this.activeModal) {
+            this.cleanupMenuListeners(this.activeModal);
+            this.activeModal.remove();
+        }
 
         const settingsHTML = `
             <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -356,6 +418,7 @@ class DailyJournalApp {
         `;
 
         document.body.insertAdjacentHTML('beforeend', settingsHTML);
+        this.activeModal = document.getElementById('settings-modal');
 
         // Setup settings functionality
         this.setupSettingsModal();
@@ -584,6 +647,18 @@ class DailyJournalApp {
     }
 
     // Utility methods
+    sanitizeHTML(str) {
+        const temp = document.createElement('div');
+        temp.textContent = str;
+        return temp.innerHTML;
+    }
+
+    escapeHTML(str) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
     debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -594,10 +669,24 @@ class DailyJournalApp {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
-    }
-
-    // Cleanup on page unload
+    }    // Cleanup on page unload
     destroy() {
+        // Cleanup all active modals
+        if (this.activeModal) {
+            this.cleanupMenuListeners(this.activeModal);
+            this.activeModal.remove();
+            this.activeModal = null;
+        }
+
+        // Remove global event listeners
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+        }
+        
+        if (this.orientationHandler) {
+            window.removeEventListener('orientationchange', this.orientationHandler);
+        }
+
         if (journal) {
             journal.destroy();
         }

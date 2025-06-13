@@ -285,9 +285,26 @@ class DatabaseManager {
     // Utility methods
     getStoredEntries() {
         try {
-            return JSON.parse(localStorage.getItem('journal_entries') || '{}');
+            const entries = localStorage.getItem('journal_entries');
+            if (!entries) return {};
+            
+            const parsed = JSON.parse(entries);
+            if (typeof parsed !== 'object' || parsed === null) {
+                console.warn('Invalid entries format in localStorage, resetting...');
+                localStorage.setItem('journal_entries', '{}');
+                return {};
+            }
+            
+            return parsed;
         } catch (error) {
             console.error('Error parsing stored entries:', error);
+            // Try to recover by clearing corrupted data
+            try {
+                localStorage.removeItem('journal_entries');
+                localStorage.setItem('journal_entries', '{}');
+            } catch (storageError) {
+                console.error('localStorage is not available:', storageError);
+            }
             return {};
         }
     }
@@ -375,37 +392,96 @@ class DatabaseManager {
             console.error('Error exporting data:', error);
             throw error;
         }
-    }
-
-    async importData(data) {
+    }    async importData(data) {
         try {
+            // Validate data structure
+            if (!data || typeof data !== 'object') {
+                throw new Error('Formato de datos inválido: debe ser un objeto');
+            }
+
             if (!data.entries || !Array.isArray(data.entries)) {
-                throw new Error('Invalid data format');
+                throw new Error('Formato de datos inválido: se requiere un array de entradas');
+            }
+
+            // Validate version compatibility
+            if (data.version && typeof data.version === 'string') {
+                const version = parseFloat(data.version);
+                if (version > 1.0) {
+                    throw new Error(`Versión no compatible: ${data.version}. Versión máxima soportada: 1.0`);
+                }
+            }
+
+            // Validate each entry
+            for (let i = 0; i < data.entries.length; i++) {
+                const entry = data.entries[i];
+                if (!entry || typeof entry !== 'object') {
+                    throw new Error(`Entrada inválida en posición ${i}: debe ser un objeto`);
+                }
+                
+                if (!entry.date || typeof entry.date !== 'string') {
+                    throw new Error(`Entrada inválida en posición ${i}: fecha requerida`);
+                }
+                
+                // Validate date format (YYYY-MM-DD)
+                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                if (!dateRegex.test(entry.date)) {
+                    throw new Error(`Entrada inválida en posición ${i}: formato de fecha inválido (${entry.date})`);
+                }
+                
+                if (entry.content && typeof entry.content !== 'string') {
+                    throw new Error(`Entrada inválida en posición ${i}: el contenido debe ser texto`);
+                }
+                
+                if (entry.mood && typeof entry.mood !== 'string') {
+                    throw new Error(`Entrada inválida en posición ${i}: el estado de ánimo debe ser texto`);
+                }
             }
 
             // Import entries
+            let importedCount = 0;
+            let skippedCount = 0;
+            
             for (const entry of data.entries) {
-                await this.saveEntry(
-                    entry.date,
-                    entry.content,
-                    entry.mood,
-                    entry.photo_path || entry.photoPath
-                );
+                try {
+                    await this.saveEntry(
+                        entry.date,
+                        entry.content || '',
+                        entry.mood || null,
+                        entry.photo_path || entry.photoPath || null
+                    );
+                    importedCount++;
+                } catch (entryError) {
+                    console.warn(`Error importing entry for ${entry.date}:`, entryError);
+                    skippedCount++;
+                }
             }
 
             // Import settings
-            if (data.settings) {
+            if (data.settings && typeof data.settings === 'object') {
+                const allowedSettings = ['darkMode', 'notificationsEnabled', 'notificationTime'];
                 for (const [key, value] of Object.entries(data.settings)) {
-                    if (value !== null && value !== undefined) {
-                        await this.setSetting(key, value);
+                    if (allowedSettings.includes(key) && value !== null && value !== undefined) {
+                        try {
+                            await this.setSetting(key, String(value));
+                        } catch (settingError) {
+                            console.warn(`Error importing setting ${key}:`, settingError);
+                        }
                     }
                 }
             }
 
-            return { success: true };
+            return { 
+                success: true, 
+                importedCount, 
+                skippedCount,
+                message: `Importadas ${importedCount} entradas. ${skippedCount} omitidas.`
+            };
         } catch (error) {
             console.error('Error importing data:', error);
-            return { success: false, error };
+            return { 
+                success: false, 
+                error: error.message || 'Error desconocido durante la importación'
+            };
         }
     }
 }
