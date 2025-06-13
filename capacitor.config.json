@@ -1,0 +1,27 @@
+{
+  "appId": "com.daviddevgt.journalapp",
+  "appName": "Daily Journal",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "Camera": {
+      "permissions": [
+        "camera",
+        "photos"
+      ]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#488AFF",
+      "sound": "beep.wav"
+    },
+    "StatusBar": {
+      "style": "Dark"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#f8fafc",
+      "showSpinner": false
+    }
+  }
+}
