@@ -4,23 +4,27 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Preferences } from '@capacitor/preferences';
 
-class JournalManager {
-    constructor() {
+class JournalManager {    constructor() {
         this.currentMood = null;
         this.currentPhoto = null;
+        this.currentThumbnail = null;
         this.hasUnsavedChanges = false;
         this.wordCountElement = null;
         this.journalTextarea = null;
         this.autoSaveTimeout = null;
         this.isInitialized = false;
-    }
-
-    async init() {
+    }    async init() {
         this.setupElements();
         this.setupEventListeners();
         this.setupAutoSave();
         await this.loadTodayEntry();
         await this.setupNotifications();
+        
+        // Generate missing thumbnails in the background
+        setTimeout(() => {
+            this.generateMissingThumbnails();
+        }, 2000); // Wait 2 seconds to not interfere with initial load
+        
         this.isInitialized = true;
     }
 
@@ -92,22 +96,38 @@ class JournalManager {
         } catch (error) {
             console.error('Error selecting mood:', error);
         }
-    }
-
-    async takePhoto() {
+    }    async takePhoto() {
         try {
-            const image = await Camera.getPhoto({
-                quality: 80,
+            // Show loading state
+            if (window.ui) {
+                window.ui.showToast('Procesando foto...', 'info', 1000);
+            }            const image = await Camera.getPhoto({
+                quality: 85,
                 allowEditing: true,
                 resultType: CameraResultType.DataUrl,
                 source: CameraSource.Camera,
-                width: 800,
-                height: 600
+                width: 1200,
+                height: 1200,
+                correctOrientation: true
             });
 
             if (image && image.dataUrl) {
+                // Display original photo
                 this.displayPhoto(image.dataUrl);
                 this.currentPhoto = image.dataUrl;
+                
+                // Generate optimized thumbnail for entry cards
+                try {
+                    if (window.ui) {
+                        window.ui.showToast('Optimizando imagen...', 'info', 1000);
+                    }
+                    
+                    this.currentThumbnail = await this.createThumbnail(image.dataUrl);
+                } catch (thumbnailError) {
+                    console.warn('Error creating thumbnail, using original:', thumbnailError);
+                    this.currentThumbnail = image.dataUrl;
+                }
+                
                 this.markUnsaved();
                 this.scheduleAutoSave();
 
@@ -127,21 +147,23 @@ class JournalManager {
                 }
             }
         }
-    }
-
-    displayPhoto(dataUrl) {
+    }    displayPhoto(dataUrl) {
         const photoContainer = document.getElementById('photo-container');
         const noPhotoDiv = document.getElementById('no-photo');
         const photoImg = document.getElementById('daily-photo');
 
         if (photoContainer && noPhotoDiv && photoImg) {
             photoImg.src = dataUrl;
+            photoImg.onclick = () => {
+                if (window.ui) {
+                    window.ui.showImagePreview(dataUrl);
+                }
+            };
+            photoImg.title = 'Clic para ver en pantalla completa';
             photoContainer.classList.remove('hidden');
             noPhotoDiv.classList.add('hidden');
         }
-    }
-
-    removePhoto() {
+    }removePhoto() {
         const photoContainer = document.getElementById('photo-container');
         const noPhotoDiv = document.getElementById('no-photo');
 
@@ -151,6 +173,7 @@ class JournalManager {
         }
 
         this.currentPhoto = null;
+        this.currentThumbnail = null;
         this.markUnsaved();
         this.scheduleAutoSave();
 
@@ -227,13 +250,12 @@ class JournalManager {
                     window.ui.showToast('No hay contenido para guardar', 'warning');
                 }
                 return;
-            }
-
-            const result = await window.db.saveEntry(
+            }            const result = await window.db.saveEntry(
                 date,
                 content,
                 this.currentMood,
-                this.currentPhoto
+                this.currentPhoto,
+                this.currentThumbnail
             );
 
             if (result.success) {
@@ -276,12 +298,11 @@ class JournalManager {
         } catch (error) {
             console.error('Error loading entry for date:', error);
         }
-    }
-
-    loadEntryData(entry) {
+    }    loadEntryData(entry) {
         // Reset current state
         this.currentMood = null;
         this.currentPhoto = null;
+        this.currentThumbnail = null;
 
         if (this.journalTextarea) {
             this.journalTextarea.value = '';
@@ -310,10 +331,9 @@ class JournalManager {
                 if (moodBtn) {
                     moodBtn.classList.add('selected');
                 }
-            }
-
-            if (entry.photo_path || entry.photoPath) {
+            }            if (entry.photo_path || entry.photoPath) {
                 this.currentPhoto = entry.photo_path || entry.photoPath;
+                this.currentThumbnail = entry.thumbnail_path || entry.thumbnailPath || this.currentPhoto;
                 this.displayPhoto(this.currentPhoto);
             }
         }
@@ -614,6 +634,96 @@ class JournalManager {
         // Save any unsaved changes before cleanup
         if (this.hasUnsavedChanges) {
             this.saveEntry(true);
+        }
+    }    // Create optimized thumbnail for faster loading in entry cards
+    createThumbnail(dataUrl, size = 200, quality = 0.8) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Create square thumbnail with smart cropping
+                canvas.width = size;
+                canvas.height = size;
+                
+                const { width: imgWidth, height: imgHeight } = img;
+                
+                // Calculate scaling to fit the square while maintaining aspect ratio
+                const scale = Math.max(size / imgWidth, size / imgHeight);
+                const scaledWidth = imgWidth * scale;
+                const scaledHeight = imgHeight * scale;
+                
+                // Center the image in the square
+                const offsetX = (size - scaledWidth) / 2;
+                const offsetY = (size - scaledHeight) / 2;
+                
+                // Fill background with a subtle color
+                ctx.fillStyle = '#f8f9fa';
+                ctx.fillRect(0, 0, size, size);
+                
+                // Apply subtle shadow/border effect
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+                ctx.shadowBlur = 2;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+                
+                // Draw the image
+                ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+                
+                // Reset shadow
+                ctx.shadowColor = 'transparent';
+                
+                const thumbnailDataUrl = canvas.toDataURL('image/jpeg', quality);
+                resolve(thumbnailDataUrl);
+            };
+            img.onerror = () => resolve(dataUrl); // Fallback to original
+            img.src = dataUrl;
+        });
+    }
+
+    // Utility function to generate thumbnails for existing entries without them
+    async generateMissingThumbnails() {
+        if (!window.db) return;
+
+        try {
+            const entries = await window.db.getAllEntries(1000); // Get more entries for processing
+            let processed = 0;
+            let generated = 0;
+
+            for (const entry of entries) {
+                if ((entry.photo_path || entry.photoPath) && 
+                    !(entry.thumbnail_path || entry.thumbnailPath)) {
+                    
+                    try {
+                        const photoPath = entry.photo_path || entry.photoPath;
+                        const thumbnail = await this.createThumbnail(photoPath);
+                        
+                        await window.db.saveEntry(
+                            entry.date,
+                            entry.content,
+                            entry.mood,
+                            photoPath,
+                            thumbnail
+                        );
+                        
+                        generated++;
+                    } catch (error) {
+                        console.warn(`Error generating thumbnail for entry ${entry.date}:`, error);
+                    }
+                }
+                processed++;
+            }
+
+            if (generated > 0) {
+                console.log(`Generated ${generated} thumbnails for existing entries`);
+                if (window.ui) {
+                    window.ui.showToast(`Optimizadas ${generated} imágenes`, 'success');
+                    window.ui.loadAllEntries(); // Refresh entries list
+                }
+            }
+        } catch (error) {
+            console.error('Error generating missing thumbnails:', error);
         }
     }
 }

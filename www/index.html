@@ -74,13 +74,13 @@
             class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <span class="material-icons text-2xl">search</span>
-          </button>
-          <button
+          </button>          <button
             id="dark-mode-toggle"
             aria-label="Modo oscuro"
             class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <span class="material-icons text-2xl">dark_mode</span>
+            <span id="light-mode-icon" class="material-icons text-2xl">light_mode</span>
+            <span id="dark-mode-icon" class="material-icons text-2xl hidden">dark_mode</span>
           </button>
         </div>
       </header>
@@ -319,33 +319,57 @@
             </div>
           </div>
         </div>
-      </main>
-
-      <!-- Bottom Navigation -->
+      </main>      <!-- Bottom Navigation - Material Design -->
       <nav
-        class="bg-white dark:bg-gray-800 border-t border-notion-border dark:border-notion-border-dark px-4 py-3 shadow-inner"
+        class="material-bottom-nav bg-white dark:bg-gray-800 border-t border-notion-border dark:border-notion-border-dark shadow-inner"
       >
-        <div class="flex justify-around max-w-md mx-auto">
+        <div class="material-tabs-container">
+          <!-- Tab 1: Today -->
           <button
-            class="bottom-nav-btn active flex flex-col items-center py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            class="material-tab active"
             data-view="today"
+            role="tab"
+            aria-selected="true"
+            aria-label="Vista de hoy"
           >
-            <span class="material-icons text-2xl">today</span>
-            <span class="text-xs mt-1">Hoy</span>
+            <div class="material-tab-content">
+              <span class="material-tab-icon material-icons">today</span>
+              <span class="material-tab-label">Hoy</span>
+            </div>
+            <div class="material-tab-indicator"></div>
+            <div class="material-tab-ripple"></div>
           </button>
+
+          <!-- Tab 2: Calendar -->
           <button
-            class="bottom-nav-btn flex flex-col items-center py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            class="material-tab"
             data-view="calendar"
+            role="tab"
+            aria-selected="false"
+            aria-label="Vista de calendario"
           >
-            <span class="material-icons text-2xl">calendar_month</span>
-            <span class="text-xs mt-1">Calendario</span>
+            <div class="material-tab-content">
+              <span class="material-tab-icon material-icons">calendar_month</span>
+              <span class="material-tab-label">Calendario</span>
+            </div>
+            <div class="material-tab-indicator"></div>
+            <div class="material-tab-ripple"></div>
           </button>
+
+          <!-- Tab 3: Entries -->
           <button
-            class="bottom-nav-btn flex flex-col items-center py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            class="material-tab"
             data-view="entries"
+            role="tab"
+            aria-selected="false"
+            aria-label="Vista de entradas"
           >
-            <span class="material-icons text-2xl">list_alt</span>
-            <span class="text-xs mt-1">Entradas</span>
+            <div class="material-tab-content">
+              <span class="material-tab-icon material-icons">list_alt</span>
+              <span class="material-tab-label">Entradas</span>
+            </div>
+            <div class="material-tab-indicator"></div>
+            <div class="material-tab-ripple"></div>
           </button>
         </div>
       </nav>

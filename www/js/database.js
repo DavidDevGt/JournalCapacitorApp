@@ -44,9 +44,7 @@ class DatabaseManager {
             // Fallback to localStorage
             this.isInitialized = true;
         }
-    }
-
-    async createTables() {
+    }    async createTables() {
         if (!this.db) return;
 
         const createTablesSQL = `
@@ -57,6 +55,7 @@ class DatabaseManager {
                 content TEXT NOT NULL,
                 mood TEXT,
                 photo_path TEXT,
+                thumbnail_path TEXT,
                 word_count INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -75,30 +74,51 @@ class DatabaseManager {
 
         try {
             await this.db.execute(createTablesSQL);
+            
+            // Check if thumbnail_path column exists, if not add it
+            await this.migrateThumbnailColumn();
         } catch (error) {
             console.error('Error creating tables:', error);
         }
     }
 
-    // Entry methods
-    async saveEntry(date, content, mood = null, photoPath = null) {
+    async migrateThumbnailColumn() {
+        if (!this.db) return;
+        
+        try {
+            // Check if thumbnail_path column exists
+            const result = await this.db.query('PRAGMA table_info(entries)');
+            const columns = result.values || [];
+            const hasThumbColumn = columns.some(col => col.name === 'thumbnail_path');
+            
+            if (!hasThumbColumn) {
+                console.log('Adding thumbnail_path column to entries table...');
+                await this.db.execute('ALTER TABLE entries ADD COLUMN thumbnail_path TEXT');
+                console.log('thumbnail_path column added successfully');
+            }
+        } catch (error) {
+            console.error('Error migrating thumbnail column:', error);
+        }
+    }    // Entry methods
+    async saveEntry(date, content, mood = null, photoPath = null, thumbnailPath = null) {
         const wordCount = this.countWords(content);
 
         if (this.db) {
             // SQLite version
             try {
                 const sql = `
-                    INSERT INTO entries (date, content, mood, photo_path, word_count, updated_at)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    INSERT INTO entries (date, content, mood, photo_path, thumbnail_path, word_count, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON CONFLICT(date) DO UPDATE SET
                         content = excluded.content,
                         mood = excluded.mood,
                         photo_path = excluded.photo_path,
+                        thumbnail_path = excluded.thumbnail_path,
                         word_count = excluded.word_count,
                         updated_at = CURRENT_TIMESTAMP
                 `;
 
-                await this.db.run(sql, [date, content, mood, photoPath, wordCount]);
+                await this.db.run(sql, [date, content, mood, photoPath, thumbnailPath, wordCount]);
                 return { success: true };
             } catch (error) {
                 console.error('Error saving entry:', error);
@@ -112,6 +132,7 @@ class DatabaseManager {
                     content,
                     mood,
                     photoPath,
+                    thumbnailPath,
                     wordCount,
                     updatedAt: new Date().toISOString()
                 };
@@ -440,14 +461,14 @@ class DatabaseManager {
             // Import entries
             let importedCount = 0;
             let skippedCount = 0;
-            
-            for (const entry of data.entries) {
+              for (const entry of data.entries) {
                 try {
                     await this.saveEntry(
                         entry.date,
                         entry.content || '',
                         entry.mood || null,
-                        entry.photo_path || entry.photoPath || null
+                        entry.photo_path || entry.photoPath || null,
+                        entry.thumbnail_path || entry.thumbnailPath || null
                     );
                     importedCount++;
                 } catch (entryError) {

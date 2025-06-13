@@ -1427,6 +1427,64 @@ video {
     background-color: rgb(31 41 55 / var(--tw-bg-opacity, 1));
 }
 
+/* Thumbnail styles for entry cards */
+.entry-thumbnail {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.entry-thumbnail:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+.dark .entry-thumbnail {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .entry-thumbnail:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Ensure images display properly */
+.entry-thumbnail img {
+    transition: opacity 0.3s ease;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Changed from cover to contain for better aspect ratio handling */
+    background-color: #f8f9fa;
+}
+
+.dark .entry-thumbnail img {
+    background-color: #374151;
+}
+
+.entry-thumbnail img[src=""] {
+    opacity: 0;
+}
+
+/* Alternative display mode for better image presentation */
+.entry-thumbnail-large {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.entry-thumbnail-large:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.dark .entry-thumbnail-large {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
 /* Calendar styles */
 
 .calendar-day {
@@ -1502,48 +1560,227 @@ video {
     animation: spin 1s linear infinite;
 }
 
-/* Bottom navigation */
+/* Material Design Bottom Navigation */
 
-.bottom-nav-btn {
+.material-bottom-nav {
+    position: relative;
+    height: 56px; /* Material Design specification */
+    min-height: 56px;
+    z-index: 10;
+}
+
+.material-tabs-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    max-width: 480px; /* Reasonable max width for tablets */
+    margin: 0 auto;
+}
+
+.material-tab {
+    position: relative;
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    border-radius: 0.5rem;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    --tw-text-opacity: 1;
-    color: rgb(155 154 151 / var(--tw-text-opacity, 1));
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    overflow: hidden;
+    outline: none;
+    min-height: 48px; /* Minimum touch target */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: rgb(155 154 151 / 0.7); /* Inactive color */
 }
 
-.bottom-nav-btn:hover {
-    --tw-text-opacity: 1;
-    color: rgb(55 53 47 / var(--tw-text-opacity, 1));
+.material-tab-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px 10px;
+    position: relative;
+    z-index: 2;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.bottom-nav-btn:is(.dark *) {
-    --tw-text-opacity: 1;
-    color: rgb(111 111 111 / var(--tw-text-opacity, 1));
+.material-tab-icon {
+    font-size: 22px !important;
+    line-height: 1;
+    margin-bottom: 2px;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.bottom-nav-btn:hover:is(.dark *) {
-    --tw-text-opacity: 1;
-    color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+.material-tab-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    line-height: 1.2;
+    text-transform: uppercase;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.bottom-nav-btn.active {
-    --tw-text-opacity: 1;
-    color: rgb(37 99 235 / var(--tw-text-opacity, 1));
+/* Tab Indicator */
+.material-tab-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    height: 3px;
+    width: 32px;
+    background: rgb(37 99 235); /* Primary color */
+    border-radius: 3px 3px 0 0;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 3;
 }
 
-.bottom-nav-btn.active:is(.dark *) {
-    --tw-text-opacity: 1;
-    color: rgb(96 165 250 / var(--tw-text-opacity, 1));
+/* Ripple Effect */
+.material-tab-ripple {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(37, 99, 235, 0.12);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
 }
+
+/* Hover States */
+.material-tab:hover {
+    color: rgb(55 53 47);
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.material-tab:hover .material-tab-content {
+    transform: translateY(-1px);
+}
+
+/* Active States */
+.material-tab.active {
+    color: rgb(37 99 235) !important; /* Primary color */
+}
+
+.material-tab.active .material-tab-indicator {
+    transform: translateX(-50%) scaleX(1);
+}
+
+.material-tab.active .material-tab-icon {
+    transform: scale(1.1);
+}
+
+.material-tab.active .material-tab-label {
+    font-weight: 600;
+}
+
+/* Pressed State */
+.material-tab:active .material-tab-ripple {
+    width: 40px;
+    height: 40px;
+    transition: width 0.15s ease, height 0.15s ease;
+}
+
+/* Focus States for Accessibility */
+.material-tab:focus-visible {
+    outline: 2px solid rgb(37 99 235);
+    outline-offset: 2px;
+}
+
+/* Dark Mode */
+.material-tab:is(.dark *) {
+    color: rgb(111 111 111 / 0.7);
+}
+
+.material-tab:hover:is(.dark *) {
+    color: rgb(255 255 255);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.material-tab.active:is(.dark *) {
+    color: rgb(96 165 250) !important; /* Primary color dark */
+}
+
+.material-tab.active:is(.dark *) .material-tab-indicator {
+    background: rgb(96 165 250);
+}
+
+.material-tab:is(.dark *) .material-tab-ripple {
+    background: rgba(96, 165, 250, 0.15);
+}
+
+/* Enhanced touch interactions for mobile devices */
+@media (hover: none) and (pointer: coarse) {
+    .material-tab:hover {
+        background: none;
+        color: inherit;
+    }
+    
+    .material-tab:hover .material-tab-content {
+        transform: none;
+    }
+    
+    /* Enhanced active states for touch */
+    .material-tab:active {
+        background: rgba(0, 0, 0, 0.08);
+        transform: scale(0.95);
+        transition: all 0.1s ease;
+    }
+    
+    .material-tab:active:is(.dark *) {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* Smooth transitions for all states */
+.material-tab * {
+    transition: inherit;
+}
+
+/* Ensure ripple is visible on all backgrounds */
+.material-tab-ripple {
+    background: var(--ripple-color, rgba(37, 99, 235, 0.12));
+}
+
+.material-tab:is(.dark *) .material-tab-ripple {
+    --ripple-color: rgba(96, 165, 250, 0.15);
+}
+
+/* Remove default button styles more thoroughly */
+.material-tab {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: transparent;
+    border-style: none;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Improved accessibility for screen readers */
+.material-tab[aria-selected="true"] .material-tab-label {
+    font-weight: 600;
+}
+
+/* Animation improvements */
+.material-tab-indicator {
+    will-change: transform;
+}
+
+.material-tab-ripple {
+    will-change: width, height;
+}
+
+.material-tab-content {
+    will-change: transform;
+}
+
+/* Remove old bottom-nav styles - keeping for backwards compatibility during transition */
 
 /* Responsive design */
 
@@ -1692,7 +1929,7 @@ textarea:focus:is(.dark *) {
 
 .focus\:ring-2:focus {
     --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(4px + var(--tw-ring-offset-width)) var(--tw-ring-color);
     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 
@@ -1930,4 +2167,81 @@ textarea:focus:is(.dark *) {
 
 .animate-fadeOut {
     animation: fadeOut 0.2s ease-in;
+}
+
+/* Loading indicator for thumbnails */
+.thumbnail-loading {
+    position: relative;
+    background: linear-gradient(90deg, #f0f0f0 25%, transparent 37%, #f0f0f0 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.dark .thumbnail-loading {
+    background: linear-gradient(90deg, #374151 25%, transparent 37%, #374151 63%);
+    background-size: 400% 100%;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: -100% 50%;
+    }
+}
+
+/* Better error state for thumbnails */
+.thumbnail-error {
+    background-color: #f3f4f6;
+    border: 2px dashed #d1d5db;
+}
+
+.dark .thumbnail-error {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+/* Better photo display in daily view */
+#daily-photo {
+    object-fit: contain;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+#daily-photo:hover {
+    transform: scale(1.02);
+    cursor: pointer;
+}
+
+.dark #daily-photo {
+    background-color: #374151;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Photo container improvements */
+#photo-container {
+    position: relative;
+}
+
+#photo-container img {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 12px;
+}
+
+/* Responsive image handling */
+@media (max-width: 640px) {
+    #photo-container img {
+        max-height: 250px;
+    }
+    
+    .entry-thumbnail-large {
+        width: 56px;
+        height: 56px;
+    }
 }

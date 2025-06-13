@@ -15,7 +15,7 @@ class UIManager {
         this.isInitialized = true;
     }
 
-    setupNavigationListeners() {
+    setupNavigationListeners() {        // Navigation event listeners
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 const view = e.target.dataset.view;
@@ -23,12 +23,68 @@ class UIManager {
             });
         });
 
-        document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const view = e.target.closest('.bottom-nav-btn').dataset.view;
+        // Material Design bottom navigation
+        document.querySelectorAll('.material-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const view = e.target.closest('.material-tab').dataset.view;
                 this.switchView(view);
+                this.triggerRippleEffect(e.target.closest('.material-tab'), e);
             });
         });
+    }    triggerRippleEffect(tab, event) {
+        const ripple = tab.querySelector('.material-tab-ripple');
+        if (!ripple) return;
+
+        // Reset ripple
+        ripple.style.width = '0';
+        ripple.style.height = '0';
+
+        // Get click position relative to tab
+        const rect = tab.getBoundingClientRect();
+        let x, y;
+
+        // Handle different event types (click, touch, keyboard)
+        if (event.type === 'click' || event.type === 'touchstart') {
+            const clientX = event.clientX || (event.touches && event.touches[0]?.clientX);
+            const clientY = event.clientY || (event.touches && event.touches[0]?.clientY);
+            
+            if (clientX !== undefined && clientY !== undefined) {
+                x = clientX - rect.left;
+                y = clientY - rect.top;
+            } else {
+                // Fallback to center if no coordinates available
+                x = rect.width / 2;
+                y = rect.height / 2;
+            }
+        } else {
+            // For keyboard navigation, center the ripple
+            x = rect.width / 2;
+            y = rect.height / 2;
+        }
+
+        // Position ripple at interaction point
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        ripple.style.transform = 'translate(-50%, -50%)';
+
+        // Calculate ripple size based on tab dimensions
+        const maxDimension = Math.max(rect.width, rect.height);
+        const rippleSize = Math.min(maxDimension * 0.8, 48); // Max 48px as per Material Design
+
+        // Trigger ripple animation
+        requestAnimationFrame(() => {
+            ripple.style.width = rippleSize + 'px';
+            ripple.style.height = rippleSize + 'px';
+        });
+
+        // Reset after animation
+        setTimeout(() => {
+            ripple.style.width = '0';
+            ripple.style.height = '0';
+            ripple.style.left = '50%';
+            ripple.style.top = '50%';
+            ripple.style.transform = 'translate(-50%, -50%)';
+        }, 300);
     }
 
     switchView(viewName) {
@@ -53,9 +109,8 @@ class UIManager {
         } else if (viewName === 'entries') {
             this.loadAllEntries();
         }
-    }
-
-    updateNavigationState(activeView) {
+    }    updateNavigationState(activeView) {
+        // Update top navigation tabs
         document.querySelectorAll('.nav-tab').forEach(tab => {
             if (tab.dataset.view === activeView) {
                 tab.classList.add('active');
@@ -64,6 +119,18 @@ class UIManager {
             }
         });
 
+        // Update Material Design bottom navigation
+        document.querySelectorAll('.material-tab').forEach(tab => {
+            if (tab.dataset.view === activeView) {
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+            } else {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            }
+        });
+
+        // Backwards compatibility: keep old bottom-nav-btn support if exists
         document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
             if (btn.dataset.view === activeView) {
                 btn.classList.add('active');
@@ -164,7 +231,6 @@ class UIManager {
             if (hasEntry) {
                 dayEl.classList.add('has-entry');
 
-                // Add mood indicator if available
                 const entryWithMood = monthEntries.find(entry => entry.date === dateStr && entry.mood);
                 if (entryWithMood) {
                     const moodIndicator = document.createElement('span');
@@ -174,8 +240,6 @@ class UIManager {
                     dayEl.appendChild(moodIndicator);
                 }
             }
-
-            // Add click listener
             dayEl.addEventListener('click', () => {
                 if (currentDate.getMonth() === month) {
                     this.selectDate(new Date(currentDate));
@@ -310,17 +374,22 @@ class UIManager {
 
         entriesList.innerHTML = entries.map(entry => this.createEntryCard(entry)).join('');
     }
-
+    
     createEntryCard(entry) {
         const date = new Date(entry.date);
         const formattedDate = this.formatDate(date, 'short');
         const preview = entry.content.substring(0, 150) + (entry.content.length > 150 ? '...' : '');
-        const moodDisplay = entry.mood ? `<span class="text-2xl">${entry.mood}</span>` : '';
-        const photoDisplay = entry.photo_path || entry.photoPath ?
-            `<div class="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
+        const moodDisplay = entry.mood ? `<span class="text-2xl">${entry.mood}</span>` : '';        // Generate photo display with actual thumbnail
+        const photoPath = entry.photo_path || entry.photoPath;
+        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;        const photoDisplay = thumbnailPath ?
+            `<div class="entry-thumbnail-large bg-gray-100 dark:bg-gray-600 flex-shrink-0 thumbnail-loading" title="Ver foto completa">
+                <img src="${thumbnailPath}" 
+                     alt="Foto de la entrada" 
+                     class="opacity-0 transition-opacity duration-300" 
+                     loading="lazy"
+                     onload="this.style.opacity='1'; this.parentElement.classList.remove('thumbnail-loading')"
+                     onerror="this.parentElement.classList.remove('thumbnail-loading'); this.parentElement.classList.add('thumbnail-error'); this.parentElement.innerHTML='<div class=&quot;w-full h-full flex items-center justify-center&quot;><svg class=&quot;w-6 h-6 text-gray-400&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; viewBox=&quot;0 0 24 24&quot;><path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z&quot;></path></svg></div>'"
+                     onclick="event.stopPropagation(); ui.showImagePreview('${photoPath || thumbnailPath}')">
             </div>` : '';
 
         return `
@@ -388,12 +457,34 @@ class UIManager {
         }
     }
 
-    setupDarkMode() {
+    updateDarkModeIcon() {
+        const lightIcon = document.getElementById('light-mode-icon');
+        const darkIcon = document.getElementById('dark-mode-icon');
+        const isDark = document.documentElement.classList.contains('dark');
+
+        if (lightIcon && darkIcon) {
+            if (isDark) {
+                // Modo oscuro activo - mostrar icono de luna
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
+            } else {
+                // Modo claro activo - mostrar icono de sol
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
+            }
+        }
+    } setupDarkMode() {
         const toggle = document.getElementById('dark-mode-toggle');
         if (!toggle) return;
 
+        // Establecer icono inicial
+        this.updateDarkModeIcon();
+
         toggle.addEventListener('click', async () => {
             const isDark = document.documentElement.classList.toggle('dark');
+
+            // Actualizar icono
+            this.updateDarkModeIcon();
 
             // Save preference
             if (window.db) {
@@ -410,9 +501,7 @@ class UIManager {
                 // StatusBar not available
             }
         });
-    }
-
-    async loadDarkModePreference() {
+    } async loadDarkModePreference() {
         if (!window.db) return;
 
         try {
@@ -420,6 +509,8 @@ class UIManager {
             if (darkMode === 'true') {
                 document.documentElement.classList.add('dark');
             }
+            // Actualizar icono después de cargar la preferencia
+            this.updateDarkModeIcon();
         } catch (error) {
             console.error('Error loading dark mode preference:', error);
         }
@@ -468,6 +559,52 @@ class UIManager {
             element.style.opacity = '';
             element.style.transition = '';
         }, 300);
+    }
+
+    // Show image preview in fullscreen modal
+    showImagePreview(imageSrc) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4';
+        modal.innerHTML = `
+            <div class="relative max-w-4xl max-h-full">
+                <button class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors" onclick="this.parentElement.parentElement.remove()">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                <img src="${imageSrc}" 
+                     alt="Vista previa de imagen" 
+                     class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                     onclick="event.stopPropagation()">
+            </div>
+        `;
+        
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        // Close on escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        document.body.appendChild(modal);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            modal.style.opacity = '0';
+            modal.style.transition = 'opacity 0.3s ease';
+            requestAnimationFrame(() => {
+                modal.style.opacity = '1';
+            });
+        });
     }
 }
 

@@ -496,8 +496,7 @@ class DailyJournalApp {
                     &times;
                 </button>
                 
-                <!-- Header con icono y gradiente -->
-                <div class="mt-4">
+                <div class="mt-4 mb-2">
                     <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                     <img src="icon-192.png" alt="Daily Journal Icon" class="w-12 h-12">
                     </div>
@@ -511,7 +510,6 @@ class DailyJournalApp {
                     </div>
                 </div>
                 
-                <!-- Contenido principal -->
                 <div class="space-y-6 text-center">
                     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mx-auto max-w-prose">
                         <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -519,17 +517,6 @@ class DailyJournalApp {
                         </p>
                     </div>
                     
-                    <div class="flex flex-wrap gap-2 justify-center">
-                    <span class="px-3 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded-full text-xs font-medium">
-                        Capacitor
-                    </span>
-                    <span class="px-3 py-1 bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 rounded-full text-xs font-medium">
-                        Tailwind CSS
-                    </span>
-                    <span class="px-3 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full text-xs font-medium">
-                        JavaScript
-                    </span>
-                    </div>
                     
                     <div class="text-center pt-4 border-t border-gray-200 dark:border-gray-600">
                     <p class="text-sm text-gray-600 dark:text-gray-400">
