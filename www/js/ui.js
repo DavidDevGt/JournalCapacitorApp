@@ -464,11 +464,9 @@ class UIManager {
 
         if (lightIcon && darkIcon) {
             if (isDark) {
-                // Modo oscuro activo - mostrar icono de luna
                 lightIcon.classList.add('hidden');
                 darkIcon.classList.remove('hidden');
             } else {
-                // Modo claro activo - mostrar icono de sol
                 lightIcon.classList.remove('hidden');
                 darkIcon.classList.add('hidden');
             }
@@ -477,13 +475,11 @@ class UIManager {
         const toggle = document.getElementById('dark-mode-toggle');
         if (!toggle) return;
 
-        // Establecer icono inicial
         this.updateDarkModeIcon();
 
         toggle.addEventListener('click', async () => {
             const isDark = document.documentElement.classList.toggle('dark');
 
-            // Actualizar icono
             this.updateDarkModeIcon();
 
             // Save preference
@@ -491,7 +487,6 @@ class UIManager {
                 await window.db.setSetting('darkMode', isDark.toString());
             }
 
-            // Update status bar if available
             try {
                 const { StatusBar } = await import('@capacitor/status-bar');
                 await StatusBar.setStyle({
@@ -561,7 +556,6 @@ class UIManager {
         }, 300);
     }
 
-    // Show image preview in fullscreen modal
     showImagePreview(imageSrc) {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4';
@@ -586,7 +580,6 @@ class UIManager {
             }
         });
         
-        // Close on escape key
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
                 modal.remove();
@@ -609,5 +602,4 @@ class UIManager {
 }
 
 const ui = new UIManager();
-
 export default ui;

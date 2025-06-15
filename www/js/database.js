@@ -1,4 +1,3 @@
-// Database management for Daily Journal App using Capacitor SQLite
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Capacitor } from '@capacitor/core';
 
@@ -11,15 +10,12 @@ class DatabaseManager {
 
     async init() {
         try {
-            // Check if platform supports SQLite
             if (Capacitor.getPlatform() === 'web') {
-                // For web, we'll use localStorage as fallback
                 console.log('Using localStorage for web platform');
                 this.isInitialized = true;
                 return;
             }
 
-            // Initialize SQLite connection
             await this.sqlite.checkConnectionsConsistency();
             const isConn = await this.sqlite.isConnection('journal_db', false);
 
@@ -41,10 +37,11 @@ class DatabaseManager {
 
         } catch (error) {
             console.error('Database initialization error:', error);
-            // Fallback to localStorage
             this.isInitialized = true;
         }
-    }    async createTables() {
+    }
+
+    async createTables() {
         if (!this.db) return;
 
         const createTablesSQL = `
@@ -74,7 +71,7 @@ class DatabaseManager {
 
         try {
             await this.db.execute(createTablesSQL);
-            
+
             // Check if thumbnail_path column exists, if not add it
             await this.migrateThumbnailColumn();
         } catch (error) {
@@ -84,13 +81,13 @@ class DatabaseManager {
 
     async migrateThumbnailColumn() {
         if (!this.db) return;
-        
+
         try {
             // Check if thumbnail_path column exists
             const result = await this.db.query('PRAGMA table_info(entries)');
             const columns = result.values || [];
             const hasThumbColumn = columns.some(col => col.name === 'thumbnail_path');
-            
+
             if (!hasThumbColumn) {
                 console.log('Adding thumbnail_path column to entries table...');
                 await this.db.execute('ALTER TABLE entries ADD COLUMN thumbnail_path TEXT');
@@ -99,7 +96,8 @@ class DatabaseManager {
         } catch (error) {
             console.error('Error migrating thumbnail column:', error);
         }
-    }    // Entry methods
+    }
+
     async saveEntry(date, content, mood = null, photoPath = null, thumbnailPath = null) {
         const wordCount = this.countWords(content);
 
@@ -308,14 +306,14 @@ class DatabaseManager {
         try {
             const entries = localStorage.getItem('journal_entries');
             if (!entries) return {};
-            
+
             const parsed = JSON.parse(entries);
             if (typeof parsed !== 'object' || parsed === null) {
                 console.warn('Invalid entries format in localStorage, resetting...');
                 localStorage.setItem('journal_entries', '{}');
                 return {};
             }
-            
+
             return parsed;
         } catch (error) {
             console.error('Error parsing stored entries:', error);
@@ -413,7 +411,9 @@ class DatabaseManager {
             console.error('Error exporting data:', error);
             throw error;
         }
-    }    async importData(data) {
+    }
+
+    async importData(data) {
         try {
             // Validate data structure
             if (!data || typeof data !== 'object') {
@@ -438,21 +438,21 @@ class DatabaseManager {
                 if (!entry || typeof entry !== 'object') {
                     throw new Error(`Entrada inválida en posición ${i}: debe ser un objeto`);
                 }
-                
+
                 if (!entry.date || typeof entry.date !== 'string') {
                     throw new Error(`Entrada inválida en posición ${i}: fecha requerida`);
                 }
-                
+
                 // Validate date format (YYYY-MM-DD)
                 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
                 if (!dateRegex.test(entry.date)) {
                     throw new Error(`Entrada inválida en posición ${i}: formato de fecha inválido (${entry.date})`);
                 }
-                
+
                 if (entry.content && typeof entry.content !== 'string') {
                     throw new Error(`Entrada inválida en posición ${i}: el contenido debe ser texto`);
                 }
-                
+
                 if (entry.mood && typeof entry.mood !== 'string') {
                     throw new Error(`Entrada inválida en posición ${i}: el estado de ánimo debe ser texto`);
                 }
@@ -461,7 +461,7 @@ class DatabaseManager {
             // Import entries
             let importedCount = 0;
             let skippedCount = 0;
-              for (const entry of data.entries) {
+            for (const entry of data.entries) {
                 try {
                     await this.saveEntry(
                         entry.date,
@@ -491,23 +491,21 @@ class DatabaseManager {
                 }
             }
 
-            return { 
-                success: true, 
-                importedCount, 
+            return {
+                success: true,
+                importedCount,
                 skippedCount,
                 message: `Importadas ${importedCount} entradas. ${skippedCount} omitidas.`
             };
         } catch (error) {
             console.error('Error importing data:', error);
-            return { 
-                success: false, 
+            return {
+                success: false,
                 error: error.message || 'Error desconocido durante la importación'
             };
         }
     }
 }
 
-// Create and export singleton instance
 const db = new DatabaseManager();
-
 export default db;

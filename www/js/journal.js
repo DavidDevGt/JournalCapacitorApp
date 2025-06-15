@@ -4,7 +4,8 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Preferences } from '@capacitor/preferences';
 
-class JournalManager {    constructor() {
+class JournalManager {
+    constructor() {
         this.currentMood = null;
         this.currentPhoto = null;
         this.currentThumbnail = null;
@@ -13,18 +14,18 @@ class JournalManager {    constructor() {
         this.journalTextarea = null;
         this.autoSaveTimeout = null;
         this.isInitialized = false;
-    }    async init() {
+    } async init() {
         this.setupElements();
         this.setupEventListeners();
         this.setupAutoSave();
         await this.loadTodayEntry();
         await this.setupNotifications();
-        
+
         // Generate missing thumbnails in the background
         setTimeout(() => {
             this.generateMissingThumbnails();
         }, 2000); // Wait 2 seconds to not interfere with initial load
-        
+
         this.isInitialized = true;
     }
 
@@ -96,12 +97,12 @@ class JournalManager {    constructor() {
         } catch (error) {
             console.error('Error selecting mood:', error);
         }
-    }    async takePhoto() {
+    } async takePhoto() {
         try {
             // Show loading state
             if (window.ui) {
                 window.ui.showToast('Procesando foto...', 'info', 1000);
-            }            const image = await Camera.getPhoto({
+            } const image = await Camera.getPhoto({
                 quality: 85,
                 allowEditing: true,
                 resultType: CameraResultType.DataUrl,
@@ -112,22 +113,21 @@ class JournalManager {    constructor() {
             });
 
             if (image && image.dataUrl) {
-                // Display original photo
+
                 this.displayPhoto(image.dataUrl);
                 this.currentPhoto = image.dataUrl;
-                
-                // Generate optimized thumbnail for entry cards
+
                 try {
                     if (window.ui) {
                         window.ui.showToast('Optimizando imagen...', 'info', 1000);
                     }
-                    
+
                     this.currentThumbnail = await this.createThumbnail(image.dataUrl);
                 } catch (thumbnailError) {
                     console.warn('Error creating thumbnail, using original:', thumbnailError);
                     this.currentThumbnail = image.dataUrl;
                 }
-                
+
                 this.markUnsaved();
                 this.scheduleAutoSave();
 
@@ -147,7 +147,9 @@ class JournalManager {    constructor() {
                 }
             }
         }
-    }    displayPhoto(dataUrl) {
+    }
+
+    displayPhoto(dataUrl) {
         const photoContainer = document.getElementById('photo-container');
         const noPhotoDiv = document.getElementById('no-photo');
         const photoImg = document.getElementById('daily-photo');
@@ -163,7 +165,9 @@ class JournalManager {    constructor() {
             photoContainer.classList.remove('hidden');
             noPhotoDiv.classList.add('hidden');
         }
-    }removePhoto() {
+    }
+
+    removePhoto() {
         const photoContainer = document.getElementById('photo-container');
         const noPhotoDiv = document.getElementById('no-photo');
 
@@ -195,9 +199,7 @@ class JournalManager {    constructor() {
         return text.trim().split(/\s+/).length;
     }
 
-    // Auto-save functionality
     setupAutoSave() {
-        // Auto-save every 30 seconds if there are unsaved changes
         setInterval(() => {
             if (this.hasUnsavedChanges) {
                 this.saveEntry(true); // Silent save
@@ -232,7 +234,7 @@ class JournalManager {    constructor() {
         }
     }
 
-    // Save and load functionality
+
     async saveEntry(silent = false) {
         if (!window.db || !window.db.isInitialized) {
             if (!silent && window.ui) {
@@ -250,7 +252,7 @@ class JournalManager {    constructor() {
                     window.ui.showToast('No hay contenido para guardar', 'warning');
                 }
                 return;
-            }            const result = await window.db.saveEntry(
+            } const result = await window.db.saveEntry(
                 date,
                 content,
                 this.currentMood,
@@ -298,8 +300,9 @@ class JournalManager {    constructor() {
         } catch (error) {
             console.error('Error loading entry for date:', error);
         }
-    }    loadEntryData(entry) {
-        // Reset current state
+    }
+
+    loadEntryData(entry) {
         this.currentMood = null;
         this.currentPhoto = null;
         this.currentThumbnail = null;
@@ -319,7 +322,6 @@ class JournalManager {    constructor() {
             noPhotoDiv.classList.remove('hidden');
         }
 
-        // Load entry data if exists
         if (entry) {
             if (entry.content && this.journalTextarea) {
                 this.journalTextarea.value = entry.content;
@@ -331,7 +333,8 @@ class JournalManager {    constructor() {
                 if (moodBtn) {
                     moodBtn.classList.add('selected');
                 }
-            }            if (entry.photo_path || entry.photoPath) {
+            }
+            if (entry.photo_path || entry.photoPath) {
                 this.currentPhoto = entry.photo_path || entry.photoPath;
                 this.currentThumbnail = entry.thumbnail_path || entry.thumbnailPath || this.currentPhoto;
                 this.displayPhoto(this.currentPhoto);
@@ -371,10 +374,8 @@ class JournalManager {    constructor() {
         }
     }
 
-    // Notifications functionality
     async setupNotifications() {
         try {
-            // Request permissions
             const permissions = await LocalNotifications.requestPermissions();
 
             if (permissions.display === 'granted') {
@@ -464,7 +465,7 @@ class JournalManager {    constructor() {
         }
     }
 
-    // Haptic feedback
+
     async triggerHapticFeedback(style = 'light') {
         try {
             const impactStyle = style === 'light' ? ImpactStyle.Light :
@@ -493,7 +494,6 @@ class JournalManager {    constructor() {
         }
     }
 
-    // Entry management
     async deleteEntry(date) {
         if (!window.db || !confirm('¿Estás seguro de que quieres eliminar esta entrada?')) {
             return;
@@ -523,7 +523,6 @@ class JournalManager {    constructor() {
         }
     }
 
-    // Data export/import
     async exportEntries() {
         if (!window.db) return;
 
@@ -549,7 +548,7 @@ class JournalManager {    constructor() {
                 window.ui.showToast('Error al exportar el backup', 'error');
             }
         }
-    }    async importEntries(file) {
+    } async importEntries(file) {
         if (!window.db || !file) {
             if (window.ui) {
                 window.ui.showToast('No se pudo acceder a la base de datos o archivo', 'error');
@@ -570,7 +569,7 @@ class JournalManager {    constructor() {
             }
 
             const text = await file.text();
-            
+
             // Validate JSON structure before parsing
             if (!text.trim()) {
                 throw new Error('El archivo está vacío');
@@ -603,77 +602,63 @@ class JournalManager {    constructor() {
         }
     }
 
-    // Keyboard shortcuts
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + S to save
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 this.saveEntry();
             }
 
-            // Ctrl/Cmd + Shift + S to share
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
                 e.preventDefault();
                 this.shareEntry();
             }
 
-            // Escape to blur textarea
             if (e.key === 'Escape' && document.activeElement === this.journalTextarea) {
                 this.journalTextarea.blur();
             }
         });
     }
 
-    // Cleanup
     destroy() {
         if (this.autoSaveTimeout) {
             clearTimeout(this.autoSaveTimeout);
         }
 
-        // Save any unsaved changes before cleanup
         if (this.hasUnsavedChanges) {
             this.saveEntry(true);
         }
-    }    // Create optimized thumbnail for faster loading in entry cards
+    }
+
     createThumbnail(dataUrl, size = 200, quality = 0.8) {
         return new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                
-                // Create square thumbnail with smart cropping
+
                 canvas.width = size;
                 canvas.height = size;
-                
+
                 const { width: imgWidth, height: imgHeight } = img;
-                
-                // Calculate scaling to fit the square while maintaining aspect ratio
+
                 const scale = Math.max(size / imgWidth, size / imgHeight);
                 const scaledWidth = imgWidth * scale;
                 const scaledHeight = imgHeight * scale;
-                
-                // Center the image in the square
+
                 const offsetX = (size - scaledWidth) / 2;
                 const offsetY = (size - scaledHeight) / 2;
-                
-                // Fill background with a subtle color
+
                 ctx.fillStyle = '#f8f9fa';
                 ctx.fillRect(0, 0, size, size);
-                
-                // Apply subtle shadow/border effect
+
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
                 ctx.shadowBlur = 2;
                 ctx.shadowOffsetX = 1;
                 ctx.shadowOffsetY = 1;
-                
-                // Draw the image
                 ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
-                
-                // Reset shadow
                 ctx.shadowColor = 'transparent';
-                
+
                 const thumbnailDataUrl = canvas.toDataURL('image/jpeg', quality);
                 resolve(thumbnailDataUrl);
             };
@@ -682,7 +667,6 @@ class JournalManager {    constructor() {
         });
     }
 
-    // Utility function to generate thumbnails for existing entries without them
     async generateMissingThumbnails() {
         if (!window.db) return;
 
@@ -692,13 +676,13 @@ class JournalManager {    constructor() {
             let generated = 0;
 
             for (const entry of entries) {
-                if ((entry.photo_path || entry.photoPath) && 
+                if ((entry.photo_path || entry.photoPath) &&
                     !(entry.thumbnail_path || entry.thumbnailPath)) {
-                    
+
                     try {
                         const photoPath = entry.photo_path || entry.photoPath;
                         const thumbnail = await this.createThumbnail(photoPath);
-                        
+
                         await window.db.saveEntry(
                             entry.date,
                             entry.content,
@@ -706,7 +690,7 @@ class JournalManager {    constructor() {
                             photoPath,
                             thumbnail
                         );
-                        
+
                         generated++;
                     } catch (error) {
                         console.warn(`Error generating thumbnail for entry ${entry.date}:`, error);
@@ -728,7 +712,5 @@ class JournalManager {    constructor() {
     }
 }
 
-// Create and export singleton instance
 const journal = new JournalManager();
-
 export default journal;
