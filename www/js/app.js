@@ -504,7 +504,7 @@ class DailyJournalApp {
                     Daily Journal
                     </h3>
                     <div class="flex items-center justify-center gap-2">
-                    <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
+                    <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium mb-4">
                         v1.0.0
                     </span>
                     </div>
