@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark theme colors -->
+    <color name="colorPrimary">#6366f1</color>
+    <color name="colorPrimaryDark">#4338ca</color>
+    <color name="colorAccent">#06b6d4</color>
+    
+    <!-- Splash screen colors for dark mode -->
+    <color name="splash_background">#1a1a1a</color>
+    <color name="splash_icon_background">#1a1a1a</color>
+</resources>

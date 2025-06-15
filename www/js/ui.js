@@ -488,13 +488,22 @@ class UIManager {
                 await window.db.setSetting('darkMode', isDark.toString());
             }
 
+            // Update status bar and splash screen for native platforms
             try {
                 const { StatusBar } = await import('@capacitor/status-bar');
-                await StatusBar.setStyle({
-                    style: isDark ? 'Dark' : 'Light'
-                });
+                const { Capacitor } = await import('@capacitor/core');
+                
+                if (Capacitor.isNativePlatform()) {
+                    await StatusBar.setStyle({
+                        style: isDark ? 'Light' : 'Dark'
+                    });
+                    await StatusBar.setBackgroundColor({
+                        color: isDark ? '#1a1a1a' : '#ffffff'
+                    });
+                }
             } catch (error) {
                 // StatusBar not available
+                console.warn('StatusBar not available:', error);
             }
         });
     } async loadDarkModePreference() {

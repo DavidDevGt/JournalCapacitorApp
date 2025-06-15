@@ -1,0 +1,24 @@
+{
+  "assets": [
+    {
+      "kind": "icon",
+      "sources": [
+        {
+          "src": "icon.png",
+          "width": 1024,
+          "height": 1024
+        }
+      ]
+    },
+    {
+      "kind": "splash",
+      "sources": [
+        {
+          "src": "splash.png",
+          "width": 2732,
+          "height": 2732
+        }
+      ]
+    }
+  ]
+}

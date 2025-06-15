@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors for the Daily Journal app -->
+    <color name="colorPrimary">#6366f1</color>
+    <color name="colorPrimaryDark">#4338ca</color>
+    <color name="colorAccent">#06b6d4</color>
+    
+    <!-- Splash screen colors -->
+    <color name="splash_background">#ffffff</color>
+    <color name="splash_icon_background">#ffffff</color>
+    
+    <!-- Additional colors -->
+    <color name="white">#ffffff</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+</resources>

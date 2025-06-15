@@ -362,3 +362,16 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
     console.error('Unhandled promise rejection:', event.reason);
 });
+
+window.hideSplashEmergency = async () => {
+    try {
+        const { SplashScreen } = await import('@capacitor/splash-screen');
+        await SplashScreen.hide({ fadeOutDuration: 300 });
+        console.log('🚨 Emergency splash screen hide executed');
+    } catch (error) {
+        console.warn('Emergency splash hide failed:', error);
+    }
+};
+
+// Set emergency timeout as ultimate fallback
+setTimeout(window.hideSplashEmergency, 3000);

@@ -114,12 +114,14 @@ export const initializeCapacitor = async () => {
         const { App } = await import('@capacitor/app');
         const { StatusBar } = await import('@capacitor/status-bar');
         const { Keyboard } = await import('@capacitor/keyboard');
+        const { SplashScreen } = await import('@capacitor/splash-screen');
 
         console.log(`📱 Platform: ${Capacitor.getPlatform()}`);
 
         if (Capacitor.isNativePlatform()) {
             const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+            // Configure status bar based on theme
             if (isDarkMode) {
                 await StatusBar.setStyle({ style: 'Light' }); // Texto claro para fondo oscuro
                 await StatusBar.setBackgroundColor({ color: '#1a1a1a' });
@@ -127,10 +129,22 @@ export const initializeCapacitor = async () => {
                 await StatusBar.setStyle({ style: 'Dark' }); // Texto oscuro para fondo claro
                 await StatusBar.setBackgroundColor({ color: '#ffffff' });
             }
+              // Configure keyboard
             await Keyboard.setResizeMode({ mode: 'none' });
+              // Hide splash screen after initialization
+            setTimeout(async () => {
+                try {
+                    await SplashScreen.hide({
+                        fadeOutDuration: 500
+                    });
+                    console.log('✅ Splash screen hidden successfully');
+                } catch (error) {
+                    console.warn('Could not hide splash screen manually, auto-hide will handle it:', error);
+                }
+            }, 1500);
         }
 
-        return { Capacitor, App, StatusBar, Keyboard };
+        return { Capacitor, App, StatusBar, Keyboard, SplashScreen };
     } catch (error) {
         console.warn('Some Capacitor features are not available:', error);
         return null;
@@ -442,4 +456,33 @@ export const setupCapacitorListeners = (capacitorModules, app, ui, journal) => {
     return () => {
         listeners.forEach(listener => listener.remove());
     };
+};
+
+// Función para mostrar splash screen manualmente
+export const showSplashScreen = async () => {
+    try {
+        const { SplashScreen } = await import('@capacitor/splash-screen');
+        await SplashScreen.show({
+            showDuration: 2000,
+            fadeInDuration: 200,
+            fadeOutDuration: 500,
+            autoHide: true
+        });
+        console.log('✅ Splash screen shown');
+    } catch (error) {
+        console.warn('Could not show splash screen:', error);
+    }
+};
+
+// Función para ocultar splash screen manualmente
+export const hideSplashScreen = async () => {
+    try {
+        const { SplashScreen } = await import('@capacitor/splash-screen');
+        await SplashScreen.hide({
+            fadeOutDuration: 500
+        });
+        console.log('✅ Splash screen hidden');
+    } catch (error) {
+        console.warn('Could not hide splash screen:', error);
+    }
 };
