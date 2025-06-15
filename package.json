@@ -13,8 +13,8 @@
     "build:ios": "npm run build && npx cap build ios",
     "open:android": "npx cap open android",
     "open:ios": "npx cap open ios",
-    "android": "npm run build && npx cap run android",
-    "ios": "npm run build && npx cap run ios"
+    "android": "npm run build && npx cap sync android",
+    "ios": "npm run build && npx cap sync ios"
   },
   "keywords": [
     "journaling",
