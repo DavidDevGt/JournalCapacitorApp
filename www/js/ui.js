@@ -12,6 +12,7 @@ class UIManager {
     init() {
         this.setupNavigationListeners();
         this.setupDateDisplay();
+        this.setupGestureNavigation();
         this.isInitialized = true;
     }
 
@@ -31,7 +32,7 @@ class UIManager {
                 this.triggerRippleEffect(e.target.closest('.material-tab'), e);
             });
         });
-    }    triggerRippleEffect(tab, event) {
+    } triggerRippleEffect(tab, event) {
         const ripple = tab.querySelector('.material-tab-ripple');
         if (!ripple) return;
 
@@ -47,7 +48,7 @@ class UIManager {
         if (event.type === 'click' || event.type === 'touchstart') {
             const clientX = event.clientX || (event.touches && event.touches[0]?.clientX);
             const clientY = event.clientY || (event.touches && event.touches[0]?.clientY);
-            
+
             if (clientX !== undefined && clientY !== undefined) {
                 x = clientX - rect.left;
                 y = clientY - rect.top;
@@ -109,7 +110,7 @@ class UIManager {
         } else if (viewName === 'entries') {
             this.loadAllEntries();
         }
-    }    updateNavigationState(activeView) {
+    } updateNavigationState(activeView) {
         // Update top navigation tabs
         document.querySelectorAll('.nav-tab').forEach(tab => {
             if (tab.dataset.view === activeView) {
@@ -374,14 +375,14 @@ class UIManager {
 
         entriesList.innerHTML = entries.map(entry => this.createEntryCard(entry)).join('');
     }
-    
+
     createEntryCard(entry) {
         const date = new Date(entry.date);
         const formattedDate = this.formatDate(date, 'short');
         const preview = entry.content.substring(0, 150) + (entry.content.length > 150 ? '...' : '');
         const moodDisplay = entry.mood ? `<span class="text-2xl">${entry.mood}</span>` : '';        // Generate photo display with actual thumbnail
         const photoPath = entry.photo_path || entry.photoPath;
-        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;        const photoDisplay = thumbnailPath ?
+        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath; const photoDisplay = thumbnailPath ?
             `<div class="entry-thumbnail-large bg-gray-100 dark:bg-gray-600 flex-shrink-0 thumbnail-loading" title="Ver foto completa">
                 <img src="${thumbnailPath}" 
                      alt="Foto de la entrada" 
@@ -572,13 +573,13 @@ class UIManager {
                      onclick="event.stopPropagation()">
             </div>
         `;
-        
+
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.remove();
             }
         });
-        
+
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
                 modal.remove();
@@ -586,7 +587,7 @@ class UIManager {
             }
         };
         document.addEventListener('keydown', handleEscape);
-        
+
         document.body.appendChild(modal);
 
         requestAnimationFrame(() => {
@@ -595,6 +596,37 @@ class UIManager {
             requestAnimationFrame(() => {
                 modal.style.opacity = '1';
             });
+        });
+    }
+
+    setupGestureNavigation() {
+        const views = ['today', 'calendar', 'entries'];
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let touchStartY = 0;
+        let touchEndY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                const currentIndex = views.indexOf(this.currentView);
+
+                if (deltaX > 50 && currentIndex > 0) {
+                    this.switchView(views[currentIndex - 1]);
+                } else if (deltaX < -50 && currentIndex < views.length - 1) {
+                    this.switchView(views[currentIndex + 1]);
+                }
+            }
         });
     }
 }

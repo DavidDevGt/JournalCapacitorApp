@@ -15,8 +15,21 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: './www/index.html'
+      },
+      output: {
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && (
+            assetInfo.name.includes('icon-') || 
+            assetInfo.name === 'favicon.ico' || 
+            assetInfo.name === 'manifest.json'
+          )) {
+            return '[name][extname]';
+          }
+          return 'assets/[name]-[hash][extname]';
+        }
       }
-    }
+    },
+    assetsInlineLimit: 0
   },
   server: {
     port: 8100,
@@ -27,5 +40,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['@capacitor/core', '@capacitor/camera', '@capacitor/local-notifications']
-  }
+  },
+  assetsInclude: ['**/*.png', '**/*.ico', '**/*.json']
 })
