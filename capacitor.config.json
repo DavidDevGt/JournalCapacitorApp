@@ -4,6 +4,7 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "plugins": {
+    
     "Camera": {
       "permissions": [
         "camera",

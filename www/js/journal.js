@@ -3,7 +3,8 @@ import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Preferences } from '@capacitor/preferences';
-
+import { Capacitor } from '@capacitor/core';
+const platform = Capacitor.getPlatform();
 class JournalManager {
     constructor() {
         this.currentMood = null;
@@ -14,7 +15,9 @@ class JournalManager {
         this.journalTextarea = null;
         this.autoSaveTimeout = null;
         this.isInitialized = false;
-    } async init() {
+    }
+
+    async init() {
         this.setupElements();
         this.setupEventListeners();
         this.setupAutoSave();
@@ -107,15 +110,11 @@ class JournalManager {
                 return;
             }
 
-            if (window.ui) {
-                window.ui.showToast('Procesando foto...', 'info', 1000);
-            }
-
             const image = await Camera.getPhoto({
-                quality: 85,
-                allowEditing: true,
+                quality: 90,
+                allowEditing: false,
                 resultType: CameraResultType.DataUrl,
-                source: photoSource, // Usar la fuente seleccionada
+                source: photoSource,
                 width: 1200,
                 height: 1200,
                 correctOrientation: true
@@ -443,26 +442,89 @@ class JournalManager {
             const content = this.journalTextarea ? this.journalTextarea.value : '';
             const date = window.ui ? window.ui.formatDate(window.ui.currentDate, 'short') : new Date().toLocaleDateString();
 
-            if (!content.trim()) {
+            if (!content.trim() && !this.currentMood && !this.currentPhoto) {
                 if (window.ui) {
                     window.ui.showToast('No hay contenido para compartir', 'warning');
                 }
                 return;
             }
 
-            const shareText = `📖 Mi entrada de diario - ${date}\n\n${content}`;
+            let shareText = `📖 Mi entrada de diario - ${date}\n\n`;
 
-            await Share.share({
+            if (this.currentMood) {
+                shareText += `😊 Estado de ánimo: ${this.currentMood}\n\n`;
+            }
+
+            if (content.trim()) {
+                shareText += `📝 ${content}\n\n`;
+            }
+
+            shareText += `✨ Creado con Daily Journal`;
+
+            const shareOptions = {
                 title: 'Mi entrada de diario',
                 text: shareText,
                 dialogTitle: 'Compartir entrada de diario'
-            });
+            };
 
+            if (this.currentPhoto && this.currentPhoto.startsWith('data:')) {
+                try {
+                    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+
+                    const base64Data = this.currentPhoto.split(',')[1];
+                    const mimeType = this.currentPhoto.split(';')[0].split(':')[1];
+                    const extension = mimeType.includes('png') ? 'png' : 'jpg';
+
+                    const fileName = `journal_photo_${Date.now()}.${extension}`;
+
+                    const writeResult = await Filesystem.writeFile({
+                        path: fileName,
+                        data: base64Data,
+                        directory: Directory.Cache
+                    });
+
+                    const fileUri = await Filesystem.getUri({
+                        directory: Directory.Cache,
+                        path: fileName
+                    });
+
+                    shareOptions.url = fileUri.uri;
+                    shareText += '\n\n📷 Incluye foto del día';
+                    shareOptions.text = shareText;
+
+                    setTimeout(async () => {
+                        try {
+                            await Filesystem.deleteFile({
+                                path: fileName,
+                                directory: Directory.Cache
+                            });
+                        } catch (cleanupError) {
+                            console.warn('Error limpiando archivo temporal:', cleanupError);
+                        }
+                    }, 30000);
+
+                } catch (photoError) {
+                    console.warn('No se pudo crear archivo temporal para la foto:', photoError);
+                    // Fallback: compartir solo texto
+                    shareOptions.text = shareText + '\n\n📷 (Foto disponible en la entrada)';
+                }
+            }
+
+            await Share.share(shareOptions);
             await this.triggerHapticFeedback('light');
+
+            if (window.ui) {
+                window.ui.showToast('Entrada compartida exitosamente', 'success');
+            }
+
         } catch (error) {
             console.error('Error sharing entry:', error);
             if (window.ui) {
-                window.ui.showToast('Error al compartir', 'error');
+                if (error.message && error.message.includes('cancelled')) {
+                    window.ui.showToast('Compartir cancelado', 'info');
+                } else {
+                    window.ui.showToast('Error al compartir', 'error');
+                }
             }
         }
     }
