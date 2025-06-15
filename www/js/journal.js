@@ -97,23 +97,31 @@ class JournalManager {
         } catch (error) {
             console.error('Error selecting mood:', error);
         }
-    } async takePhoto() {
+    }
+
+    async takePhoto() {
         try {
-            // Show loading state
+            const photoSource = await this.showPhotoSourceModal();
+
+            if (!photoSource) {
+                return;
+            }
+
             if (window.ui) {
                 window.ui.showToast('Procesando foto...', 'info', 1000);
-            } const image = await Camera.getPhoto({
+            }
+
+            const image = await Camera.getPhoto({
                 quality: 85,
                 allowEditing: true,
                 resultType: CameraResultType.DataUrl,
-                source: CameraSource.Camera,
+                source: photoSource, // Usar la fuente seleccionada
                 width: 1200,
                 height: 1200,
                 correctOrientation: true
             });
 
             if (image && image.dataUrl) {
-
                 this.displayPhoto(image.dataUrl);
                 this.currentPhoto = image.dataUrl;
 
@@ -121,7 +129,6 @@ class JournalManager {
                     if (window.ui) {
                         window.ui.showToast('Optimizando imagen...', 'info', 1000);
                     }
-
                     this.currentThumbnail = await this.createThumbnail(image.dataUrl);
                 } catch (thumbnailError) {
                     console.warn('Error creating thumbnail, using original:', thumbnailError);
@@ -130,7 +137,6 @@ class JournalManager {
 
                 this.markUnsaved();
                 this.scheduleAutoSave();
-
                 await this.triggerHapticFeedback('medium');
 
                 if (window.ui) {
@@ -141,12 +147,99 @@ class JournalManager {
             console.error('Error taking photo:', error);
             if (window.ui) {
                 if (error.message && error.message.includes('cancelled')) {
-                    window.ui.showToast('Captura de foto cancelada', 'info');
+                    window.ui.showToast('Operación cancelada', 'info');
                 } else {
-                    window.ui.showToast('Error al tomar la foto', 'error');
+                    window.ui.showToast('Error al procesar la foto', 'error');
                 }
             }
         }
+    }
+
+    showPhotoSourceModal() {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center z-50 p-4 transition-colors';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full mx-4 transform transition-all">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
+                            Seleccionar foto
+                        </h3>
+                        <div class="space-y-3">
+
+                            <button id="camera-option" class="w-full flex items-center justify-center space-x-3 bg-blue-500 hover:bg-blue-600 text-gray-900 dark:text-white py-3 px-4 rounded-lg transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <span class="text-gray-900 dark:text-white">Tomar foto</span>
+                            </button>
+
+                            <button id="gallery-option" class="w-full flex items-center justify-center space-x-3 bg-green-500 hover:bg-green-600 text-gray-900 dark:text-white py-3 px-4 rounded-lg transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span class="text-gray-900 dark:text-white">Seleccionar de galería</span>
+                            </button>
+                            
+                            <button id="cancel-option" class="w-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 py-3 px-4 rounded-lg transition-colors border border-gray-400 dark:border-gray-500">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const cameraBtn = modal.querySelector('#camera-option');
+            const galleryBtn = modal.querySelector('#gallery-option');
+            const cancelBtn = modal.querySelector('#cancel-option');
+
+            const cleanup = () => {
+                if (modal && document.body.contains(modal)) {
+                    document.body.removeChild(modal);
+                }
+            };
+
+            cameraBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(CameraSource.Camera);
+            });
+
+            galleryBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(CameraSource.Photos);
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(null);
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    cleanup();
+                    resolve(null);
+                }
+            });
+
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup();
+                    resolve(null);
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+
+            requestAnimationFrame(() => {
+                modal.style.opacity = '0';
+                modal.style.transition = 'opacity 0.3s ease';
+                requestAnimationFrame(() => {
+                    modal.style.opacity = '1';
+                });
+            });
+        });
     }
 
     displayPhoto(dataUrl) {

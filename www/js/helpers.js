@@ -108,7 +108,6 @@ export const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 export const validateEnvironment = () => !!(document && window && localStorage);
 
 
-// Capacitor initialization helper
 export const initializeCapacitor = async () => {
     try {
         const { Capacitor } = await import('@capacitor/core');
@@ -119,8 +118,16 @@ export const initializeCapacitor = async () => {
         console.log(`📱 Platform: ${Capacitor.getPlatform()}`);
 
         if (Capacitor.isNativePlatform()) {
-            await StatusBar.setStyle({ style: 'Dark' });
-            await StatusBar.setBackgroundColor({ color: '#ffffff' });
+            const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (isDarkMode) {
+                await StatusBar.setStyle({ style: 'Light' }); // Texto claro para fondo oscuro
+                await StatusBar.setBackgroundColor({ color: '#1a1a1a' });
+            } else {
+                await StatusBar.setStyle({ style: 'Dark' }); // Texto oscuro para fondo claro
+                await StatusBar.setBackgroundColor({ color: '#ffffff' });
+            }
+            await Keyboard.setResizeMode({ mode: 'none' });
         }
 
         return { Capacitor, App, StatusBar, Keyboard };

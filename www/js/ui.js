@@ -573,7 +573,6 @@ class UIManager {
             </div>
         `;
         
-        // Close on background click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.remove();
@@ -589,8 +588,7 @@ class UIManager {
         document.addEventListener('keydown', handleEscape);
         
         document.body.appendChild(modal);
-        
-        // Animate in
+
         requestAnimationFrame(() => {
             modal.style.opacity = '0';
             modal.style.transition = 'opacity 0.3s ease';

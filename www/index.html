@@ -25,9 +25,8 @@
       rel="stylesheet"
     />
 
-    <!-- Custom Styles -->
     <link rel="stylesheet" href="css/styles.css" />
-    <!-- Meta tags for mobile -->
+
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Daily Journal" />
@@ -35,7 +34,6 @@
   <body
     class="h-full bg-notion-bg dark:bg-notion-bg-dark text-notion-text dark:text-notion-text-dark font-sans transition-colors duration-200"
   >
-    <!-- Loading Screen -->
     <div
       id="loading-screen"
       class="fixed inset-0 bg-notion-bg dark:bg-notion-bg-dark flex items-center justify-center z-50"
@@ -52,7 +50,6 @@
 
     <!-- Main App Container -->
     <div id="app" class="hidden h-full flex flex-col">
-      <!-- Header -->
       <header
         class="bg-notion-bg dark:bg-notion-bg-dark border-b border-notion-border dark:border-notion-border-dark px-4 py-3 flex items-center justify-between shadow-md"
       >
@@ -87,7 +84,6 @@
 
       <!-- Main Content -->
       <main class="flex-1 overflow-hidden relative">
-        <!-- Today View -->
         <div id="today-view" class="view-container h-full p-4 overflow-y-auto">
           <div class="max-w-2xl mx-auto">
             <!-- Date Header -->
@@ -223,7 +219,6 @@
           </div>
         </div>
 
-        <!-- Calendar View -->
         <div
           id="calendar-view"
           class="view-container hidden h-full p-4 overflow-y-auto"
@@ -284,7 +279,6 @@
           </div>
         </div>
 
-        <!-- Entries View -->
         <div
           id="entries-view"
           class="view-container hidden h-full p-4 overflow-y-auto"
@@ -319,7 +313,9 @@
             </div>
           </div>
         </div>
-      </main>      <!-- Bottom Navigation - Material Design -->
+      </main>
+
+      <!-- Bottom Navigation -->
       <nav
         class="material-bottom-nav bg-white dark:bg-gray-800 border-t border-notion-border dark:border-notion-border-dark shadow-inner"
       >
@@ -375,12 +371,9 @@
       </nav>
     </div>
 
-    <!-- Toast Notifications -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
-      <!-- Toasts will appear here -->
     </div>
 
-    <!-- Scripts -->
     <script type="module" src="js/database.js"></script>
     <script type="module" src="js/ui.js"></script>
     <script type="module" src="js/journal.js"></script>

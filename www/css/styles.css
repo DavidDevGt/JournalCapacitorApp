@@ -283,12 +283,6 @@ sup {
     top: -0.5em;
 }
 
-/*
-1. Remove text indentation from table contents in Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=999088, https://bugs.webkit.org/show_bug.cgi?id=201297)
-2. Correct table border color inheritance in all Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=935729, https://bugs.webkit.org/show_bug.cgi?id=195016)
-3. Remove gaps between table borders by default.
-*/
-
 table {
     text-indent: 0;
     /* 1 */
@@ -297,12 +291,6 @@ table {
     border-collapse: collapse;
     /* 3 */
 }
-
-/*
-1. Change the font styles in all browsers.
-2. Remove the margin in Firefox and Safari.
-3. Remove default padding in all browsers.
-*/
 
 button,
 input,
@@ -331,19 +319,10 @@ textarea {
     /* 3 */
 }
 
-/*
-Remove the inheritance of text transform in Edge and Firefox.
-*/
-
 button,
 select {
     text-transform: none;
 }
-
-/*
-1. Correct the inability to style clickable types in iOS and Safari.
-2. Remove default button styles.
-*/
 
 button,
 input:where([type='button']),
@@ -1454,7 +1433,8 @@ video {
     transition: opacity 0.3s ease;
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Changed from cover to contain for better aspect ratio handling */
+    object-fit: contain;
+    /* Changed from cover to contain for better aspect ratio handling */
     background-color: #f8f9fa;
 }
 
@@ -1564,7 +1544,8 @@ video {
 
 .material-bottom-nav {
     position: relative;
-    height: 56px; /* Material Design specification */
+    height: 56px;
+    /* Material Design specification */
     min-height: 56px;
     z-index: 10;
 }
@@ -1573,7 +1554,8 @@ video {
     display: flex;
     height: 100%;
     width: 100%;
-    max-width: 480px; /* Reasonable max width for tablets */
+    max-width: 480px;
+    /* Reasonable max width for tablets */
     margin: 0 auto;
 }
 
@@ -1589,9 +1571,11 @@ video {
     cursor: pointer;
     overflow: hidden;
     outline: none;
-    min-height: 48px; /* Minimum touch target */
+    min-height: 48px;
+    /* Minimum touch target */
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    color: rgb(155 154 151 / 0.7); /* Inactive color */
+    color: rgb(155 154 151 / 0.7);
+    /* Inactive color */
 }
 
 .material-tab-content {
@@ -1629,7 +1613,8 @@ video {
     transform: translateX(-50%) scaleX(0);
     height: 3px;
     width: 32px;
-    background: rgb(37 99 235); /* Primary color */
+    background: rgb(37 99 235);
+    /* Primary color */
     border-radius: 3px 3px 0 0;
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 3;
@@ -1662,7 +1647,8 @@ video {
 
 /* Active States */
 .material-tab.active {
-    color: rgb(37 99 235) !important; /* Primary color */
+    color: rgb(37 99 235) !important;
+    /* Primary color */
 }
 
 .material-tab.active .material-tab-indicator {
@@ -1701,7 +1687,8 @@ video {
 }
 
 .material-tab.active:is(.dark *) {
-    color: rgb(96 165 250) !important; /* Primary color dark */
+    color: rgb(96 165 250) !important;
+    /* Primary color dark */
 }
 
 .material-tab.active:is(.dark *) .material-tab-indicator {
@@ -1718,18 +1705,18 @@ video {
         background: none;
         color: inherit;
     }
-    
+
     .material-tab:hover .material-tab-content {
         transform: none;
     }
-    
+
     /* Enhanced active states for touch */
     .material-tab:active {
         background: rgba(0, 0, 0, 0.08);
         transform: scale(0.95);
         transition: all 0.1s ease;
     }
-    
+
     .material-tab:active:is(.dark *) {
         background: rgba(255, 255, 255, 0.1);
     }
@@ -1779,10 +1766,6 @@ video {
 .material-tab-content {
     will-change: transform;
 }
-
-/* Remove old bottom-nav styles - keeping for backwards compatibility during transition */
-
-/* Responsive design */
 
 @media (max-width: 640px) {
     .entry-card {
@@ -2137,24 +2120,35 @@ textarea:focus:is(.dark *) {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes slideUp {
-    from { 
+    from {
         opacity: 0;
         transform: translateY(20px) scale(0.95);
     }
-    to { 
+
+    to {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
 }
 
 @keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
 }
 
 .animate-fadeIn {
@@ -2186,6 +2180,7 @@ textarea:focus:is(.dark *) {
     0% {
         background-position: 100% 50%;
     }
+
     100% {
         background-position: -100% 50%;
     }
@@ -2239,7 +2234,7 @@ textarea:focus:is(.dark *) {
     #photo-container img {
         max-height: 250px;
     }
-    
+
     .entry-thumbnail-large {
         width: 56px;
         height: 56px;
@@ -2248,10 +2243,10 @@ textarea:focus:is(.dark *) {
 
 /* Safe Area support for notch devices */
 @supports(padding: env(safe-area-inset-top)) {
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-right: env(safe-area-inset-right);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-  }
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+    }
 }
