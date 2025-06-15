@@ -1,7 +1,8 @@
-// Main application entry point for Daily Journal App
 import db from './database.js';
 import ui from './ui.js';
 import journal from './journal.js';
+import { debounce, sanitizeHTML, escapeHTML } from './helpers.js';
+import serviceManager from './services/index.js';
 
 class DailyJournalApp {
     constructor() {
@@ -9,39 +10,35 @@ class DailyJournalApp {
         this.activeModal = null;
         this.resizeHandler = null;
         this.orientationHandler = null;
-    }
+    }    async init() {
+        try {            console.log('🚀 Initializing Daily Journal App...');
 
-    async init() {
-        try {
-            console.log('🚀 Initializing Daily Journal App...');
-
-            // Show loading screen
             ui.showLoading();
 
-            // Initialize Capacitor
             await this.initializeCapacitor();
 
-            // Initialize database
+            console.log('🔧 Initializing services...');
+            const servicesResult = await serviceManager.initializeAll();
+            if (!servicesResult.success) {
+                console.warn('Some services failed to initialize:', servicesResult);
+            }
+            window.services = serviceManager;
+
             console.log('📊 Initializing database...');
             await db.init();
-            window.db = db; // Make db globally available
+            window.db = db;
 
-            // Initialize UI
             console.log('🎨 Initializing UI...');
             ui.init();
-            window.ui = ui; // Make ui globally available
+            window.ui = ui;
 
-            // Load dark mode preference
             await ui.loadDarkModePreference();
 
-            // Initialize journal functionality
             console.log('📖 Initializing journal...');
             await journal.init();
-            window.journal = journal; // Make journal globally available
+            window.journal = journal;
 
-            // Setup additional UI components
-            this.setupAdditionalUI();            // Hide loading screen
-            setTimeout(() => {
+            this.setupAdditionalUI();            setTimeout(() => {
                 ui.hideLoading();
                 console.log('✅ Daily Journal App initialized successfully!');
             }, 1000);
@@ -137,7 +134,7 @@ class DailyJournalApp {
         this.setupSettings();
 
         // Handle window resize for responsive design - store reference for cleanup
-        this.resizeHandler = this.debounce(() => {
+        this.resizeHandler = debounce(() => {
             this.handleResize();
         }, 250);
         window.addEventListener('resize', this.resizeHandler);
@@ -242,7 +239,6 @@ class DailyJournalApp {
             }
         };
 
-        // Store references for cleanup
         const handleCloseClick = () => closeMenu();
         const handleOverlayClick = (e) => {
             if (e.target === overlay) closeMenu();
@@ -633,47 +629,65 @@ class DailyJournalApp {
         document.body.innerHTML = errorHTML;
     }
 
-    // Utility methods
-    sanitizeHTML(str) {
-        const temp = document.createElement('div');
-        temp.textContent = str;
-        return temp.innerHTML;
+    // Service management methods
+    async getServicesStatus() {
+        if (!window.services) return null;
+        return await window.services.getServicesStatus();
     }
 
-    escapeHTML(str) {
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(str));
-        return div.innerHTML;
+    async performHealthCheck() {
+        if (!window.services) return null;
+        return await window.services.healthCheck();
     }
 
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }    // Cleanup on page unload
-    destroy() {
-        // Cleanup all active modals
-        if (this.activeModal) {
-            this.cleanupMenuListeners(this.activeModal);
-            this.activeModal.remove();
-            this.activeModal = null;
+    async emergencyCleanup() {
+        if (!window.services) return null;
+        return await window.services.emergencyCleanup();
+    }
+
+    // Enhanced error handling
+    async handleServiceError(serviceName, error) {
+        console.error(`Service error in ${serviceName}:`, error);
+        
+        if (window.ui) {
+            window.ui.showToast(`Error en servicio ${serviceName}`, 'error');
         }
 
-        // Remove global event listeners
+        // Attempt recovery
+        try {
+            const service = window.services?.getService(serviceName);
+            if (service && typeof service.init === 'function') {
+                console.log(`Attempting to restart ${serviceName} service...`);
+                const result = await service.init();
+                if (result.success) {
+                    console.log(`${serviceName} service restarted successfully`);
+                    if (window.ui) {
+                        window.ui.showToast(`Servicio ${serviceName} restaurado`, 'success');
+                    }
+                }
+            }
+        } catch (recoveryError) {
+            console.error(`Failed to recover ${serviceName} service:`, recoveryError);
+        }
+    }
+
+    destroy() {
+        console.log('🔄 Cleaning up app...');
+
+        // Remove event listeners to prevent memory leaks
         if (this.resizeHandler) {
             window.removeEventListener('resize', this.resizeHandler);
         }
-        
         if (this.orientationHandler) {
             window.removeEventListener('orientationchange', this.orientationHandler);
         }
 
+        // Clean up services
+        if (window.services) {
+            window.services.emergencyCleanup();
+        }
+
+        // ...existing cleanup code...
         if (journal) {
             journal.destroy();
         }
