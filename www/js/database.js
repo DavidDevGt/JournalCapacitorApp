@@ -1,7 +1,6 @@
 // Database management for Daily Journal App using Capacitor SQLite
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Capacitor } from '@capacitor/core';
-import { countWords } from './helpers.js';
 
 class DatabaseManager {
     constructor() {
@@ -102,7 +101,7 @@ class DatabaseManager {
         }
     }    // Entry methods
     async saveEntry(date, content, mood = null, photoPath = null, thumbnailPath = null) {
-        const wordCount = countWords(content);
+        const wordCount = this.countWords(content);
 
         if (this.db) {
             // SQLite version
@@ -331,6 +330,11 @@ class DatabaseManager {
         }
     }
 
+    countWords(text) {
+        if (!text || text.trim() === '') return 0;
+        return text.trim().split(/\s+/).length;
+    }
+
     formatDate(date) {
         return date.toISOString().split('T')[0];
     }
@@ -503,6 +507,7 @@ class DatabaseManager {
     }
 }
 
+// Create and export singleton instance
 const db = new DatabaseManager();
 
 export default db;
