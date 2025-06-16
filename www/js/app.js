@@ -41,7 +41,6 @@ class DailyJournalApp {
 
             ui.showLoading();
 
-            // Initialize Capacitor with new helper
             const capacitorModules = await initializeCapacitor();
             if (capacitorModules) {
                 this.capacitorCleanup = setupCapacitorListeners(
@@ -86,7 +85,6 @@ class DailyJournalApp {
         this.setupMenu();
         this.setupSettings();
 
-        // Setup responsive handlers with debouncing
         this.resizeHandler = debounce(() => {
             handleResize(ui);
         }, 250);
@@ -99,7 +97,6 @@ class DailyJournalApp {
         };
         window.addEventListener('orientationchange', this.orientationHandler);
 
-        // Setup PWA and offline detection
         this.pwaCleanup = setupPWAInstall();
         this.offlineCleanup = setupOfflineDetection(ui);
     }
@@ -223,7 +220,6 @@ class DailyJournalApp {
             }
         };
 
-        // Load current settings
         if (db.isInitialized) {
             const notificationsEnabled = await db.getSetting('notificationsEnabled', 'true');
             const savedTime = await db.getSetting('notificationTime', '20:00');
@@ -372,6 +368,4 @@ window.hideSplashEmergency = async () => {
         console.warn('Emergency splash hide failed:', error);
     }
 };
-
-// Set emergency timeout as ultimate fallback
 setTimeout(window.hideSplashEmergency, 3000);

@@ -71,8 +71,6 @@ class DatabaseManager {
 
         try {
             await this.db.execute(createTablesSQL);
-
-            // Check if thumbnail_path column exists, if not add it
             await this.migrateThumbnailColumn();
         } catch (error) {
             console.error('Error creating tables:', error);
@@ -83,7 +81,6 @@ class DatabaseManager {
         if (!this.db) return;
 
         try {
-            // Check if thumbnail_path column exists
             const result = await this.db.query('PRAGMA table_info(entries)');
             const columns = result.values || [];
             const hasThumbColumn = columns.some(col => col.name === 'thumbnail_path');
@@ -189,7 +186,6 @@ class DatabaseManager {
 
     async searchEntries(query) {
         if (this.db) {
-            // SQLite version
             try {
                 const result = await this.db.query(
                     'SELECT * FROM entries WHERE content LIKE ? ORDER BY date DESC',
@@ -201,7 +197,6 @@ class DatabaseManager {
                 return [];
             }
         } else {
-            // localStorage fallback
             const entries = this.getStoredEntries();
             const filteredEntries = Object.keys(entries)
                 .filter(date =>
@@ -258,7 +253,6 @@ class DatabaseManager {
         }
     }
 
-    // Settings methods
     async getSetting(key, defaultValue = null) {
         if (this.db) {
             try {
@@ -301,7 +295,6 @@ class DatabaseManager {
         }
     }
 
-    // Utility methods
     getStoredEntries() {
         try {
             const entries = localStorage.getItem('journal_entries');
@@ -337,7 +330,6 @@ class DatabaseManager {
         return date.toISOString().split('T')[0];
     }
 
-    // Statistics methods
     async getStats() {
         if (this.db) {
             try {
@@ -389,7 +381,6 @@ class DatabaseManager {
         return streak;
     }
 
-    // Backup and restore
     async exportData() {
         try {
             const entries = await this.getAllEntries(1000);
@@ -415,7 +406,6 @@ class DatabaseManager {
 
     async importData(data) {
         try {
-            // Validate data structure
             if (!data || typeof data !== 'object') {
                 throw new Error('Formato de datos inválido: debe ser un objeto');
             }
@@ -458,7 +448,6 @@ class DatabaseManager {
                 }
             }
 
-            // Import entries
             let importedCount = 0;
             let skippedCount = 0;
             for (const entry of data.entries) {
@@ -477,7 +466,6 @@ class DatabaseManager {
                 }
             }
 
-            // Import settings
             if (data.settings && typeof data.settings === 'object') {
                 const allowedSettings = ['darkMode', 'notificationsEnabled', 'notificationTime'];
                 for (const [key, value] of Object.entries(data.settings)) {

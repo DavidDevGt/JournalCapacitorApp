@@ -1,5 +1,3 @@
-// helpers.js - Versión refactorizada
-
 const LOCALE = 'es-ES'
 const SHORT_OPTS = {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -10,7 +8,6 @@ const OPTIONS = {
     month: { year: 'numeric', month: 'long' }
 }
 
-// Funciones de fecha y formato existentes
 export const formatDate = (date, fmt = 'short') =>
     new Intl.DateTimeFormat(LOCALE, OPTIONS[fmt] || OPTIONS.short).format(date)
 
@@ -47,7 +44,6 @@ export const escapeHTML = str => {
     return div.innerHTML;
 };
 
-// Funciones de modal existentes
 export const createModal = (id, content, className = '') => {
     const modal = document.createElement('div');
     modal.id = id;
@@ -129,9 +125,9 @@ export const initializeCapacitor = async () => {
                 await StatusBar.setStyle({ style: 'Dark' }); // Texto oscuro para fondo claro
                 await StatusBar.setBackgroundColor({ color: '#ffffff' });
             }
-              // Configure keyboard
+            // Configure keyboard
             await Keyboard.setResizeMode({ mode: 'none' });
-              // Hide splash screen after initialization
+            // Hide splash screen after initialization
             setTimeout(async () => {
                 try {
                     await SplashScreen.hide({
@@ -235,7 +231,6 @@ export const setupElementCleanup = (element, cleanupHandlers = []) => {
     return cleanupAll;
 };
 
-// Menu HTML generator
 export const generateMenuHTML = () => `
     <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center sm:justify-center">
         <div class="bg-white dark:bg-gray-800 w-full sm:w-96 sm:rounded-lg p-6 space-y-4 animate-slide-up">
@@ -276,7 +271,6 @@ export const generateMenuHTML = () => `
     </div>
 `;
 
-// Stats modal HTML generator
 export const generateStatsHTML = (stats) => `
     <div id="stats-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
@@ -299,7 +293,6 @@ export const generateStatsHTML = (stats) => `
     </div>
 `;
 
-// Settings modal HTML generator
 export const generateSettingsHTML = () => `
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
@@ -336,7 +329,6 @@ export const generateSettingsHTML = () => `
 `;
 
 
-// About modal HTML generator
 export const generateAboutHTML = () => `
     <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-6 animate-fadeIn">
         <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-lg text-center transform animate-slideUp border border-gray-200 dark:border-gray-700 space-y-6">
@@ -353,7 +345,7 @@ export const generateAboutHTML = () => `
             Daily Journal
             </h3>
             <div class="flex items-center justify-center gap-2">
-            <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium mb-4">
+            <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium mb-1">
                 v1.0.0
             </span>
             </div>
@@ -458,7 +450,6 @@ export const setupCapacitorListeners = (capacitorModules, app, ui, journal) => {
     };
 };
 
-// Función para mostrar splash screen manualmente
 export const showSplashScreen = async () => {
     try {
         const { SplashScreen } = await import('@capacitor/splash-screen');
@@ -474,7 +465,6 @@ export const showSplashScreen = async () => {
     }
 };
 
-// Función para ocultar splash screen manualmente
 export const hideSplashScreen = async () => {
     try {
         const { SplashScreen } = await import('@capacitor/splash-screen');
@@ -485,4 +475,34 @@ export const hideSplashScreen = async () => {
     } catch (error) {
         console.warn('Could not hide splash screen:', error);
     }
+};
+
+export const getDailyPrompt = () => {
+    const prompts = [
+        "¿Qué te hizo sonreír hoy?",
+        "¿Qué aprendiste sobre ti mismo?",
+        "¿Por qué tres cosas estás agradecido?",
+        "¿Cómo te sentiste al despertar hoy?",
+        "¿Qué te preocupó hoy?",
+        "¿Qué pensamiento no pudiste sacar de tu mente?",
+        "¿Qué harías diferente si pudieras repetir el día?",
+        "¿Qué momento de paz tuviste hoy?",
+        "¿Qué meta pequeña podrías fijarte para mañana?"
+    ];
+
+    const HISTORY_KEY = 'dailyPromptHistory';
+    const HISTORY_LIMIT = 5;
+
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const availablePrompts = prompts.filter(p => !history.includes(p));
+    const promptsToUse = availablePrompts.length > 0 ? availablePrompts : prompts;
+
+    const selectedPrompt = promptsToUse[Math.floor(Math.random() * promptsToUse.length)];
+
+    const newHistory = availablePrompts.length > 0
+        ? [...history, selectedPrompt].slice(-HISTORY_LIMIT)
+        : [selectedPrompt];
+
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+    return selectedPrompt;
 };
