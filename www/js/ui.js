@@ -75,7 +75,6 @@ class UIManager {
         viewport.appendChild(content);
         container.appendChild(viewport);
 
-        // Replace entries list with virtual scroll container
         entriesList.parentNode.replaceChild(container, entriesList);
 
         this.virtualScrollContainer = container;
@@ -166,8 +165,9 @@ class UIManager {
         const itemElement = document.createElement('div');
         itemElement.className = 'virtual-scroll-item';
         itemElement.style.height = `${this.virtualScrollConfig.itemHeight}px`;
-        itemElement.style.padding = '1rem';
-        itemElement.style.borderBottom = '1px solid var(--border-color, #e5e7eb)';
+
+        
+
         itemElement.setAttribute('data-index', index);
 
         const date = new Date(entry.date);
@@ -391,6 +391,9 @@ class UIManager {
 
     switchView(viewName) {
         if (this.currentView === viewName) return;
+
+        console.log(`🔄 Switching from ${this.currentView} to ${viewName}`);
+
         const currentViewEl = document.getElementById(`${this.currentView}-view`);
         if (currentViewEl) {
             currentViewEl.classList.add('hidden');
@@ -403,6 +406,11 @@ class UIManager {
 
         this.updateNavigationState(viewName);
         this.currentView = viewName;
+
+        // Solo actualizar state manager si es diferente para evitar bucles
+        if (window.stateManager && window.stateManager.getState().currentView !== viewName) {
+            window.stateManager.setCurrentView(viewName);
+        }
 
         if (viewName === 'calendar') {
             this.renderCalendar();
@@ -560,12 +568,26 @@ class UIManager {
                 this.renderCalendar();
             });
         }
-    }
+    } selectDate(date) {
+        console.log(`📅 Selecting date: ${date}`);
 
-    selectDate(date) {
+        // Actualizar fecha local primero
         this.currentDate = new Date(date);
+
+        // Cambiar a vista today
         this.switchView('today');
         this.setupDateDisplay();
+
+        // Solo actualizar state manager si la fecha es diferente para evitar bucles
+        if (window.stateManager) {
+            const currentStateDate = window.stateManager.getState().currentDate;
+            const newDateStr = this.formatDateForStorage(date);
+            const currentStateStr = this.formatDateForStorage(currentStateDate);
+
+            if (newDateStr !== currentStateStr) {
+                window.stateManager.setCurrentDate(date);
+            }
+        }
 
         if (window.journal) {
             window.journal.loadEntryForDate(this.formatDateForStorage(date));

@@ -4,7 +4,9 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
+
 const platform = Capacitor.getPlatform();
+
 class JournalManager {
     constructor() {
         this.currentMood = null;
@@ -15,13 +17,13 @@ class JournalManager {
         this.journalTextarea = null;
         this.autoSaveTimeout = null;
         this.isInitialized = false;
-        
+
         // Auto mood detection properties
         this.sentimentAnalyzer = null;
         this.autoMoodTimeout = null;
         this.lastAnalyzedText = '';
         this.isManualMoodSelection = false;
-    }    async init() {
+    } async init() {
         this.setupElements();
         this.setupEventListeners();
         this.setupAutoSave();
@@ -57,7 +59,7 @@ class JournalManager {
         const removePhotoBtn = document.getElementById('remove-photo-btn');
         if (removePhotoBtn) {
             removePhotoBtn.addEventListener('click', () => this.removePhoto());
-        }        if (this.journalTextarea) {
+        } if (this.journalTextarea) {
             this.journalTextarea.addEventListener('input', (e) => {
                 this.updateWordCount();
                 this.markUnsaved();
@@ -79,7 +81,7 @@ class JournalManager {
         if (shareBtn) {
             shareBtn.addEventListener('click', () => this.shareEntry());
         }
-    }    async selectMood(mood) {
+    } async selectMood(mood) {
         try {
             await this.triggerHapticFeedback('medium');
 
@@ -120,7 +122,7 @@ class JournalManager {
     scheduleAutoMoodDetection(text) {
         // Import settings helper
         const settings = window.getSettings ? window.getSettings() : { autoMoodDetection: true };
-        
+
         if (!settings.autoMoodDetection || !this.sentimentAnalyzer) {
             return;
         }
@@ -140,7 +142,7 @@ class JournalManager {
         this.autoMoodTimeout = setTimeout(() => {
             this.detectAndSetMood(trimmedText);
         }, 800); // Wait 800ms after stop typing
-    }    detectAndSetMood(text) {
+    } detectAndSetMood(text) {
         if (!this.sentimentAnalyzer || !text.trim()) {
             return;
         }
@@ -184,7 +186,7 @@ class JournalManager {
         if (moodBtn) {
             moodBtn.classList.add('selected', 'auto-detected');
             this.currentMood = mood;
-            
+
             // Subtle visual indicator that it was auto-detected
             this.showAutoMoodIndicator(moodBtn);
         }
@@ -193,13 +195,13 @@ class JournalManager {
     showAutoMoodIndicator(moodBtn) {
         // Add a subtle animation and indicator
         moodBtn.style.position = 'relative';
-        
+
         // Create sparkle indicator
         const indicator = document.createElement('div');
         indicator.className = 'auto-mood-indicator';
         indicator.innerHTML = '✨';
         moodBtn.appendChild(indicator);
-        
+
         // Remove indicator after animation
         setTimeout(() => {
             if (indicator.parentNode) {
@@ -498,7 +500,9 @@ class JournalManager {
         } catch (error) {
             console.error('Error loading entry for date:', error);
         }
-    }    loadEntryData(entry) {
+    }
+
+    loadEntryData(entry) {
         this.currentMood = null;
         this.currentPhoto = null;
         this.currentThumbnail = null;
@@ -649,13 +653,10 @@ class JournalManager {
 
     async scheduleNotifications() {
         try {
-            // Get user preference for notification time
             const notificationTime = await window.db?.getSetting('notificationTime', '20:00') || '20:00';
             const isEnabled = await window.db?.getSetting('notificationsEnabled', 'true') || 'true';
 
             if (isEnabled === 'false') return;
-
-            // Cancel existing notifications
             await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
 
             // Schedule daily reminder
@@ -787,21 +788,25 @@ class JournalManager {
     async exportEntries() {
         if (!window.db) return;
 
+        console.log('Exporting entries...');
         try {
             const data = await window.db.exportData();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
+            const fileName = `journal-backup-${new Date().toISOString().split('T')[0]}.json`;
+            const jsonString = JSON.stringify(data, null, 2);
 
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `journal-backup-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+
+            await Filesystem.writeFile({
+                path: fileName,
+                data: jsonString,
+                directory: Directory.Documents,
+                encoding: Encoding.UTF8
+            });
+
+            console.log(`Backup saved as ${fileName}`);
 
             if (window.ui) {
-                window.ui.showToast('Backup exportado correctamente', 'success');
+                window.ui.showToast(`Backup guardado en Documentos/${fileName}`, 'success');
             }
         } catch (error) {
             console.error('Error exporting entries:', error);
@@ -809,7 +814,9 @@ class JournalManager {
                 window.ui.showToast('Error al exportar el backup', 'error');
             }
         }
-    } async importEntries(file) {
+    }
+
+    async importEntries(file) {
         if (!window.db || !file) {
             if (window.ui) {
                 window.ui.showToast('No se pudo acceder a la base de datos o archivo', 'error');
