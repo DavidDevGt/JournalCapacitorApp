@@ -270,7 +270,6 @@ class UIManager {
             this.filteredEntries = results;
             this.initializeVirtualScroll();
 
-            // Scroll to top after search
             if (this.virtualScrollContainer) {
                 this.virtualScrollContainer.scrollTop = 0;
             }
@@ -281,7 +280,6 @@ class UIManager {
         }
     }
 
-    // Utility function for throttling
     throttle(func, limit) {
         let lastFunc;
         let lastRan;
@@ -301,7 +299,6 @@ class UIManager {
         };
     }
 
-    // Clean up virtual scroll resources
     destroyVirtualScroll() {
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
@@ -317,7 +314,6 @@ class UIManager {
         this.virtualScrollContent = null;
     }
 
-    // Override existing methods to work with virtual scrolling
     renderEntriesList(entries) {
         // Update entries data
         this.allEntries = entries;
@@ -327,7 +323,6 @@ class UIManager {
         this.initializeVirtualScroll();
     }
 
-    // Keep existing methods unchanged
     setupNavigationListeners() {
         // Navigation event listeners
         document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -351,15 +346,12 @@ class UIManager {
         const ripple = tab.querySelector('.material-tab-ripple');
         if (!ripple) return;
 
-        // Reset ripple
         ripple.style.width = '0';
         ripple.style.height = '0';
 
-        // Get click position relative to tab
         const rect = tab.getBoundingClientRect();
         let x, y;
 
-        // Handle different event types (click, touch, keyboard)
         if (event.type === 'click' || event.type === 'touchstart') {
             const clientX = event.clientX || (event.touches && event.touches[0]?.clientX);
             const clientY = event.clientY || (event.touches && event.touches[0]?.clientY);
@@ -368,32 +360,26 @@ class UIManager {
                 x = clientX - rect.left;
                 y = clientY - rect.top;
             } else {
-                // Fallback to center if no coordinates available
                 x = rect.width / 2;
                 y = rect.height / 2;
             }
         } else {
-            // For keyboard navigation, center the ripple
             x = rect.width / 2;
             y = rect.height / 2;
         }
 
-        // Position ripple at interaction point
         ripple.style.left = x + 'px';
         ripple.style.top = y + 'px';
         ripple.style.transform = 'translate(-50%, -50%)';
 
-        // Calculate ripple size based on tab dimensions
         const maxDimension = Math.max(rect.width, rect.height);
         const rippleSize = Math.min(maxDimension * 0.8, 48); // Max 48px as per Material Design
 
-        // Trigger ripple animation
         requestAnimationFrame(() => {
             ripple.style.width = rippleSize + 'px';
             ripple.style.height = rippleSize + 'px';
         });
 
-        // Reset after animation
         setTimeout(() => {
             ripple.style.width = '0';
             ripple.style.height = '0';
@@ -405,12 +391,10 @@ class UIManager {
 
     switchView(viewName) {
         if (this.currentView === viewName) return;
-
         const currentViewEl = document.getElementById(`${this.currentView}-view`);
         if (currentViewEl) {
             currentViewEl.classList.add('hidden');
         }
-
         const newViewEl = document.getElementById(`${viewName}-view`);
         if (newViewEl) {
             newViewEl.classList.remove('hidden');
@@ -494,13 +478,9 @@ class UIManager {
         const currentMonthEl = document.getElementById('current-month');
 
         if (!calendarGrid || !currentMonthEl) return;
-
         currentMonthEl.textContent = this.formatDate(this.currentMonth, 'month');
 
-        // Clear calendar
         calendarGrid.innerHTML = '';
-
-        // Add headers
         const dayHeaders = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
         dayHeaders.forEach(day => {
             const dayHeader = document.createElement('div');
@@ -517,7 +497,6 @@ class UIManager {
         const startDate = new Date(firstDay);
         startDate.setDate(startDate.getDate() - firstDay.getDay());
 
-        // Get database info
         let monthEntries = [];
         if (window.db && window.db.isInitialized) {
             monthEntries = await window.db.getEntriesForMonth(year, month + 1);
@@ -588,7 +567,6 @@ class UIManager {
         this.switchView('today');
         this.setupDateDisplay();
 
-        // Trigger entry loading for selected date
         if (window.journal) {
             window.journal.loadEntryForDate(this.formatDateForStorage(date));
         }
@@ -608,7 +586,6 @@ class UIManager {
                 position: 'bottom'
             });
         } catch (error) {
-            // Fallback to custom toast
             this.showCustomToast(message, type, duration);
         }
     }
@@ -905,8 +882,6 @@ class UIManager {
         });
     }
 
-    // Additional utility methods for virtual scrolling optimization
-
     /**
      * Smooth scroll to a specific entry index
      */
@@ -1001,11 +976,9 @@ class UIManager {
     cleanup() {
         this.destroyVirtualScroll();
 
-        // Clear other references
         this.allEntries = [];
         this.filteredEntries = [];
 
-        // Remove event listeners if needed
         document.removeEventListener('touchstart', this.setupGestureNavigation);
         document.removeEventListener('touchend', this.setupGestureNavigation);
     }
