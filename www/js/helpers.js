@@ -345,9 +345,9 @@ export const generateSettingsHTML = () => `
                                 id="auto-mood-sensitivity" 
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
-                                <option value="low">Baja - Solo cambios muy evidentes</option>
-                                <option value="medium" selected>Media - Equilibrio entre precisión y sensibilidad</option>
-                                <option value="high">Alta - Detecta cambios sutiles</option>
+                                <option value="low">Baja</option>
+                                <option value="medium" selected>Media</option>
+                                <option value="high">Alta</option>
                             </select>
                         </div>
                     </div>
