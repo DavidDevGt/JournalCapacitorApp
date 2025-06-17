@@ -395,7 +395,7 @@ export const generateAboutHTML = () => `
         <div class="space-y-6 text-center">
             <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mx-auto max-w-prose">
                 <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
-                    Una aplicación minimalista de diario personal con estética tipo Notion para capturar tus pensamientos diarios.
+                    Una aplicación minimalista para capturar tus pensamientos diarios.
                 </p>
             </div>
             
