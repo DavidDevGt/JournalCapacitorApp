@@ -10,17 +10,17 @@ Una app elegante para escribir tu diario diario. Diseño limpio, funciona sin in
 
 ## 🚀 Características
 
-- 📝 **Escribe diario** - Editor con auto-guardado
-- 😊 **Registra humor** - 5 emojis para tu día  
-- 📷 **Una foto diaria** - Captura momentos
-- 📅 **Calendario visual** - Ve entradas por mes
-- 🔍 **Búsqueda rápida** - Encuentra cualquier entrada
-- 📊 **Estadísticas** - Palabras escritas, rachas, promedios
-- 🔔 **Recordatorios** - Notificaciones personalizables
-- 🌙 **Modo oscuro** - Diseño adaptable
-- 📱 **Funciona offline** - Sin internet necesario
-- 📤 **Export/Import** - Backup de tus datos
-- 🎨 **Diseño Notion** - Interfaz limpia y elegante
+- 📝 **Editor inteligente** - Auto-guardado con detección de estado de ánimo en tiempo real
+- 🧠 **Análisis inteligente** - Detección automática de sentimientos con IA
+- 📷 **Fotos optimizadas** - Compresión automática y miniaturas
+- 📅 **Vista calendario** - Navegación visual por fechas con indicadores de estado
+- 🔍 **Búsqueda semántica** - Encuentra entradas por contenido y emociones
+- 📊 **Estadísticas detalladas** - Análisis de palabras, rachas y patrones emocionales
+- 🔔 **Recordatorios personalizables** - Notificaciones programables
+- 🌙 **Tema adaptativo** - Modo oscuro automático según preferencias del sistema
+- 📱 **100% offline** - Funciona completamente sin conexión
+- 📤 **Backup inteligente** - Export/import con validación de datos
+- 🎨 **Diseño Notion-inspired** - Interfaz limpia, moderna y profesional
 
 ## 💻 Instalación
 
@@ -112,11 +112,25 @@ cd android && ./gradlew clean && npx cap sync
 
 ## 📊 Stats del proyecto
 
-- **~2,500 líneas** de JavaScript vanilla
-- **15+ funcionalidades** principales  
+- **~3,000+ líneas** de JavaScript vanilla
+- **20+ funcionalidades** principales  
+- **Análisis de sentimientos** con IA integrada
 - **10+ plugins** Capacitor integrados
 - **Mobile-first** responsive design
 - **3 plataformas** soportadas (Android, iOS, Web/PWA)
+- **SQLite + localStorage** para persistencia híbrida
+
+## 🧠 Análisis Inteligente de Emociones
+
+La app incluye un motor de análisis de sentimientos que:
+
+- **Detecta automáticamente** tu estado de ánimo mientras escribes
+- **Combina múltiples técnicas**: Análisis heurístico + Naive Bayes
+- **Reconoce emociones específicas**: alegría, tristeza, enojo, miedo, amor, etc.
+- **Aprende de patrones** en español con diccionario optimizado
+- **Funciona offline** completamente sin APIs externas
+
+*El análisis es opcional y configurable en ajustes de la App*
 
 ## 👨‍💻 Autor
 
