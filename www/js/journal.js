@@ -15,14 +15,19 @@ class JournalManager {
         this.journalTextarea = null;
         this.autoSaveTimeout = null;
         this.isInitialized = false;
-    }
-
-    async init() {
+        
+        // Auto mood detection properties
+        this.sentimentAnalyzer = null;
+        this.autoMoodTimeout = null;
+        this.lastAnalyzedText = '';
+        this.isManualMoodSelection = false;
+    }    async init() {
         this.setupElements();
         this.setupEventListeners();
         this.setupAutoSave();
         await this.loadTodayEntry();
         await this.setupNotifications();
+        await this.initSentimentAnalyzer();
 
         // Generate missing thumbnails in the background
         setTimeout(() => {
@@ -52,13 +57,12 @@ class JournalManager {
         const removePhotoBtn = document.getElementById('remove-photo-btn');
         if (removePhotoBtn) {
             removePhotoBtn.addEventListener('click', () => this.removePhoto());
-        }
-
-        if (this.journalTextarea) {
+        }        if (this.journalTextarea) {
             this.journalTextarea.addEventListener('input', (e) => {
                 this.updateWordCount();
                 this.markUnsaved();
                 this.scheduleAutoSave();
+                this.scheduleAutoMoodDetection(e.target.value);
             });
 
             this.journalTextarea.addEventListener('focus', () => {
@@ -75,14 +79,12 @@ class JournalManager {
         if (shareBtn) {
             shareBtn.addEventListener('click', () => this.shareEntry());
         }
-    }
-
-    async selectMood(mood) {
+    }    async selectMood(mood) {
         try {
             await this.triggerHapticFeedback('medium');
 
             document.querySelectorAll('.mood-btn').forEach(btn => {
-                btn.classList.remove('selected');
+                btn.classList.remove('selected', 'auto-detected');
             });
 
             const selectedBtn = document.querySelector(`[data-mood="${mood}"]`);
@@ -91,6 +93,7 @@ class JournalManager {
             }
 
             this.currentMood = mood;
+            this.isManualMoodSelection = true; // Mark as manual selection
             this.markUnsaved();
             this.scheduleAutoSave();
 
@@ -100,6 +103,109 @@ class JournalManager {
         } catch (error) {
             console.error('Error selecting mood:', error);
         }
+    }
+
+    // Auto mood detection functions
+    async initSentimentAnalyzer() {
+        try {
+            // Dynamic import to avoid affecting initial performance
+            const SentimentAnalyzer = (await import('./sentiment-analyzer.js')).default;
+            this.sentimentAnalyzer = new SentimentAnalyzer();
+            console.log('✅ Sentiment analyzer initialized');
+        } catch (error) {
+            console.warn('Could not load sentiment analyzer:', error);
+        }
+    }
+
+    scheduleAutoMoodDetection(text) {
+        // Import settings helper
+        const settings = window.getSettings ? window.getSettings() : { autoMoodDetection: true };
+        
+        if (!settings.autoMoodDetection || !this.sentimentAnalyzer) {
+            return;
+        }
+
+        // Cancel previous detection to avoid multiple analyses
+        if (this.autoMoodTimeout) {
+            clearTimeout(this.autoMoodTimeout);
+        }
+
+        // Only analyze if there's enough new text
+        const trimmedText = text.trim();
+        if (trimmedText.length < 20 || trimmedText === this.lastAnalyzedText) {
+            return;
+        }
+
+        // Debounce to avoid overwhelming analysis
+        this.autoMoodTimeout = setTimeout(() => {
+            this.detectAndSetMood(trimmedText);
+        }, 800); // Wait 800ms after stop typing
+    }    detectAndSetMood(text) {
+        if (!this.sentimentAnalyzer || !text.trim()) {
+            return;
+        }
+
+        try {
+            const settings = window.getSettings ? window.getSettings() : { autoMoodSensitivity: 'medium' };
+            const analysis = this.sentimentAnalyzer.analyze(text);
+            this.lastAnalyzedText = text.trim();
+
+            // Determine confidence threshold based on sensitivity
+            let confidenceThreshold = 0.3; // default medium
+            switch (settings.autoMoodSensitivity) {
+                case 'low':
+                    confidenceThreshold = 0.6; // Only very evident changes
+                    break;
+                case 'medium':
+                    confidenceThreshold = 0.3; // Balanced
+                    break;
+                case 'high':
+                    confidenceThreshold = 0.1; // Detect subtle changes
+                    break;
+            }
+
+            // Only change mood if confidence is sufficient and no manual selection
+            if (analysis.confidence > confidenceThreshold && !this.isManualMoodSelection) {
+                this.setAutoDetectedMood(analysis.mood);
+            }
+        } catch (error) {
+            console.warn('Error in mood detection:', error);
+        }
+    }
+
+    setAutoDetectedMood(mood) {
+        // Remove previous selections
+        document.querySelectorAll('.mood-btn').forEach(btn => {
+            btn.classList.remove('selected', 'auto-detected');
+        });
+
+        // Select detected mood
+        const moodBtn = document.querySelector(`[data-mood="${mood}"]`);
+        if (moodBtn) {
+            moodBtn.classList.add('selected', 'auto-detected');
+            this.currentMood = mood;
+            
+            // Subtle visual indicator that it was auto-detected
+            this.showAutoMoodIndicator(moodBtn);
+        }
+    }
+
+    showAutoMoodIndicator(moodBtn) {
+        // Add a subtle animation and indicator
+        moodBtn.style.position = 'relative';
+        
+        // Create sparkle indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'auto-mood-indicator';
+        indicator.innerHTML = '✨';
+        moodBtn.appendChild(indicator);
+        
+        // Remove indicator after animation
+        setTimeout(() => {
+            if (indicator.parentNode) {
+                indicator.parentNode.removeChild(indicator);
+            }
+        }, 2000);
     }
 
     async takePhoto() {
@@ -392,19 +498,18 @@ class JournalManager {
         } catch (error) {
             console.error('Error loading entry for date:', error);
         }
-    }
-
-    loadEntryData(entry) {
+    }    loadEntryData(entry) {
         this.currentMood = null;
         this.currentPhoto = null;
         this.currentThumbnail = null;
+        this.isManualMoodSelection = false; // Reset manual selection flag
 
         if (this.journalTextarea) {
             this.journalTextarea.value = '';
         }
 
         document.querySelectorAll('.mood-btn').forEach(btn => {
-            btn.classList.remove('selected');
+            btn.classList.remove('selected', 'auto-detected');
         });
 
         const photoContainer = document.getElementById('photo-container');
@@ -421,6 +526,7 @@ class JournalManager {
 
             if (entry.mood) {
                 this.currentMood = entry.mood;
+                this.isManualMoodSelection = true; // Existing mood is considered manual
                 const moodBtn = document.querySelector(`[data-mood="${entry.mood}"]`);
                 if (moodBtn) {
                     moodBtn.classList.add('selected');

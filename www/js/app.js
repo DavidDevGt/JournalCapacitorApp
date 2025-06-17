@@ -17,7 +17,11 @@ import {
     setupElementCleanup,
     cleanupElement,
     debounce,
-    validateEnvironment
+    validateEnvironment,
+    getSettings,
+    getSettingsAsync,
+    saveSettings,
+    showSettingsModal
 } from './helpers.js';
 
 class DailyJournalApp {
@@ -54,13 +58,15 @@ class DailyJournalApp {
             await db.init();
             window.db = db;
 
-            ui.init();
-            window.ui = ui;
+            ui.init();            window.ui = ui;
 
             await ui.loadDarkModePreference();
 
             await journal.init();
-            window.journal = journal;
+            window.journal = journal;            // Make settings functions globally available
+            window.getSettings = getSettings;
+            window.getSettingsAsync = getSettingsAsync;
+            window.saveSettings = saveSettings;
 
             this.setupAdditionalUI();
 
@@ -190,79 +196,15 @@ class DailyJournalApp {
         });
 
         this.activeModal = modal;
-    }
-
-    showSettings() {
+    }    async showSettings() {
         if (this.activeModal) {
             cleanupElement(this.activeModal);
             this.activeModal.remove();
         }
 
-        const settingsHTML = generateSettingsHTML();
-        const modal = createModalWithCleanup(settingsHTML, (modal) => {
-            this.setupSettingsModal(modal);
-        });
-
-        this.activeModal = modal;
-    }
-
-    async setupSettingsModal(modal) {
-        const closeBtn = document.getElementById('close-settings');
-        const notificationsToggle = document.getElementById('notifications-toggle');
-        const notificationTime = document.getElementById('notification-time');
-        const importFile = document.getElementById('import-file');
-
-        const closeSettings = () => {
-            if (modal) {
-                cleanupElement(modal);
-                modal.remove();
-                this.activeModal = null;
-            }
-        };
-
-        if (db.isInitialized) {
-            const notificationsEnabled = await db.getSetting('notificationsEnabled', 'true');
-            const savedTime = await db.getSetting('notificationTime', '20:00');
-
-            if (notificationsToggle) {
-                notificationsToggle.checked = notificationsEnabled === 'true';
-            }
-
-            if (notificationTime) {
-                notificationTime.value = savedTime;
-            }
-        }
-
-        const handlers = [
-            () => closeBtn?.removeEventListener('click', closeSettings),
-            () => modal?.removeEventListener('click', (e) => e.target === modal && closeSettings()),
-            () => notificationsToggle?.removeEventListener('change', (e) => journal.toggleNotifications(e.target.checked)),
-            () => notificationTime?.removeEventListener('change', (e) => journal.setNotificationTime(e.target.value)),
-            () => importFile?.removeEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    journal.importEntries(file);
-                    closeSettings();
-                }
-            })
-        ];
-
-        closeBtn?.addEventListener('click', closeSettings);
-        modal?.addEventListener('click', (e) => e.target === modal && closeSettings());
-        notificationsToggle?.addEventListener('change', (e) => journal.toggleNotifications(e.target.checked));
-        notificationTime?.addEventListener('change', (e) => journal.setNotificationTime(e.target.value));
-        importFile?.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                journal.importEntries(file);
-                closeSettings();
-            }
-        });
-
-        setupElementCleanup(modal, handlers);
-    }
-
-    showAbout() {
+        // Use the new settings modal function from helpers
+        this.activeModal = await showSettingsModal();
+    }showAbout() {
         const existingMenu = document.getElementById('menu-overlay');
         if (existingMenu) {
             cleanupElement(existingMenu);

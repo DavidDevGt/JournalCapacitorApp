@@ -298,7 +298,7 @@ export const generateSettingsHTML = () => `
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold">Configuración</h3>
-                <button id="close-settings" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <button data-close-modal class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -313,13 +313,38 @@ export const generateSettingsHTML = () => `
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                     </label>
                 </div>
-                
-                <div>
+                  <div>
                     <label class="block text-sm font-medium mb-2">Hora del recordatorio</label>
-                    <input type="time" id="notification-time" value="20:00" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="time" 
+                           id="notification-time" 
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
 
                 <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <h4 class="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">Análisis de Emociones</h4>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-sm">Detección automática</span>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Detecta tu estado de ánimo mientras escribes</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="auto-mood-toggle" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                          <div>
+                            <label class="block text-sm font-medium mb-2">Sensibilidad de detección</label>
+                            <select id="auto-mood-sensitivity" 
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="low">Baja - Solo cambios muy evidentes</option>
+                                <option value="medium">Media - Equilibrio entre precisión y sensibilidad</option>
+                                <option value="high">Alta - Detecta cambios sutiles</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>                <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
                     <label class="block text-sm font-medium mb-2">Importar datos</label>
                     <input type="file" id="import-file" accept=".json" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
@@ -505,4 +530,167 @@ export const getDailyPrompt = () => {
 
     localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
     return selectedPrompt;
+};
+
+// Settings management for auto mood detection and notifications
+export const getSettings = () => {
+    const defaultSettings = {
+        notifications: true,
+        notificationTime: '20:00',
+        darkMode: 'auto',
+        sentimentAnalysis: true,
+        autoMoodDetection: true,
+        autoMoodSensitivity: 'medium' // low, medium, high
+    };
+
+    const saved = localStorage.getItem('journal-settings');
+    return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+};
+
+// Async version that syncs with database
+export const getSettingsAsync = async () => {
+    const settings = getSettings();
+
+    // If database is available, sync notification settings
+    if (window.db && window.db.isInitialized) {
+        try {
+            const dbNotificationsEnabled = await window.db.getSetting('notificationsEnabled', 'true');
+            const dbNotificationTime = await window.db.getSetting('notificationTime', '20:00');
+
+            settings.notifications = dbNotificationsEnabled === 'true';
+            settings.notificationTime = dbNotificationTime;
+        } catch (error) {
+            console.warn('Could not load notification settings from database:', error);
+        }
+    }
+
+    return settings;
+};
+
+export const saveSettings = (settings) => {
+    localStorage.setItem('journal-settings', JSON.stringify(settings));
+    return settings;
+};
+
+export const applyTheme = (darkMode) => {
+    if (darkMode === 'dark' || (darkMode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+};
+
+// Show settings modal with event handling
+export const showSettingsModal = async () => {
+    const settings = await getSettingsAsync();
+
+    const settingsHTML = generateSettingsHTML();
+    const modal = createModalWithCleanup(settingsHTML, (modal) => {
+        // Get elements
+        const notificationsToggle = document.getElementById('notifications-toggle');
+        const notificationTime = document.getElementById('notification-time');
+        const autoMoodToggle = document.getElementById('auto-mood-toggle');
+        const autoMoodSensitivity = document.getElementById('auto-mood-sensitivity');
+        const importFile = document.getElementById('import-file');
+
+        // Set current values from settings
+        if (notificationsToggle) {
+            notificationsToggle.checked = settings.notifications;
+        }
+        if (notificationTime) {
+            notificationTime.value = settings.notificationTime;
+        }
+        if (autoMoodToggle) {
+            autoMoodToggle.checked = settings.autoMoodDetection;
+        }
+        if (autoMoodSensitivity) {
+            autoMoodSensitivity.value = settings.autoMoodSensitivity;
+        }
+
+        // Function to save current settings automatically and sync notifications
+        const saveCurrentSettings = async () => {
+            const newSettings = {
+                notifications: notificationsToggle?.checked || false,
+                notificationTime: notificationTime?.value || '20:00',
+                autoMoodDetection: autoMoodToggle?.checked || false,
+                autoMoodSensitivity: autoMoodSensitivity?.value || 'medium'
+            };
+
+            // Save to localStorage
+            saveSettings(newSettings);
+
+            // Sync notifications with journal system if available
+            if (window.journal) {
+                try {
+                    // Update database settings for notifications
+                    if (window.db) {
+                        await window.db.setSetting('notificationsEnabled', newSettings.notifications.toString());
+                        await window.db.setSetting('notificationTime', newSettings.notificationTime);
+                    }
+
+                    // Update notification scheduling
+                    if (newSettings.notifications) {
+                        await window.journal.scheduleNotifications();
+                    } else {
+                        await window.journal.toggleNotifications(false);
+                    }
+                } catch (error) {
+                    console.warn('Error syncing notifications:', error);
+                }
+            }
+
+            // Show brief confirmation
+            if (window.ui) {
+                window.ui.showToast('✓ Guardado', 'success', 1000);
+            }
+        };
+
+        // Auto-save event listeners
+        if (notificationsToggle) {
+            notificationsToggle.addEventListener('change', saveCurrentSettings);
+        }
+
+        if (notificationTime) {
+            notificationTime.addEventListener('change', saveCurrentSettings);
+        }
+
+        if (autoMoodToggle) {
+            autoMoodToggle.addEventListener('change', saveCurrentSettings);
+        }
+
+        if (autoMoodSensitivity) {
+            autoMoodSensitivity.addEventListener('change', saveCurrentSettings);
+        }
+
+        // Import file handler
+        if (importFile) {
+            importFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file && window.journal) {
+                    window.journal.importEntries(file);
+                    closeModal();
+                }
+            });
+        }
+
+        // Close modal handler
+        const closeBtn = modal.querySelector('[data-close-modal]');
+        const closeModal = () => {
+            cleanupElement(modal);
+            document.body.removeChild(modal);
+        };
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeModal);
+        }
+
+        // Close on outside click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    });
+
+    return modal;
 };
