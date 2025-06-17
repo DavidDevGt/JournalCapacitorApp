@@ -1,6 +1,5 @@
 class SentimentAnalyzer {
     constructor() {
-        // Configuración centralizada
         this.config = {
             updateDelay: 300,
             minWords: 2,
@@ -12,7 +11,6 @@ class SentimentAnalyzer {
             bayesWeight: 0.3
         };
 
-        // Diccionarios compactos usando Map para mejor rendimiento
         this.sentimentWords = new Map([
             ['veryPositive', new Set([
                 'excelente', 'increíble', 'fantástico', 'maravilloso', 'extraordinario',
@@ -43,7 +41,6 @@ class SentimentAnalyzer {
             ])]
         ]);
 
-        // Patrones de emociones optimizados
         this.emotionPatterns = new Map([
             ['joy', new Set(['risa', 'sonrisa', 'diversión', 'humor', 'celebrar', 'alegría'])],
             ['sadness', new Set(['llorar', 'lágrimas', 'pena', 'melancolía', 'tristeza', 'dolor'])],
@@ -53,21 +50,17 @@ class SentimentAnalyzer {
             ['love', new Set(['amor', 'cariño', 'afecto', 'ternura', 'pasión', 'romance'])]
         ]);
 
-        // Sets para búsquedas O(1)
         this.intensifiersHigh = new Set(['muy', 'mucho', 'bastante', 'demasiado', 'extremadamente', 'súper']);
         this.intensifiersLow = new Set(['poco', 'algo', 'ligeramente', 'apenas', 'casi']);
         this.negations = new Set(['no', 'nunca', 'jamás', 'tampoco', 'nada', 'nadie', 'ningún', 'sin']);
 
-        // Modelo preentrenado compacto
         this.model = this.initCompactModel();
-        
-        // Cache para resultados frecuentes
+
         this.cache = new Map();
         this.maxCacheSize = 100;
     }
 
     initCompactModel() {
-        // Modelo más compacto con palabras clave esenciales
         const wordProbs = new Map([
             ['positive', new Map([
                 ['me', 0.18], ['gusta', 0.32], ['bien', 0.28], ['bueno', 0.25], ['feliz', 0.35],
@@ -92,10 +85,9 @@ class SentimentAnalyzer {
         };
     }
 
-    // Preprocesamiento optimizado con regex compiladas
     preprocessText(text) {
         if (!text) return '';
-        
+
         return text
             .toLowerCase()
             .replace(/[^\w\sáéíóúüñ]/g, ' ')
@@ -103,7 +95,6 @@ class SentimentAnalyzer {
             .trim();
     }
 
-    // Análisis heurístico optimizado
     scoreHeuristic(words) {
         if (!words.length) return 0;
 
@@ -136,7 +127,7 @@ class SentimentAnalyzer {
 
         const intensityMod = this.calculateIntensity(words);
         const normalizedScore = totalWords > 0 ? score / totalWords : 0;
-        
+
         return Math.max(-1, Math.min(1, normalizedScore * intensityMod));
     }
 
@@ -165,21 +156,20 @@ class SentimentAnalyzer {
         return Math.max(0.1, Math.min(2.0, modifier));
     }
 
-    // Naive Bayes optimizado
     predictNaiveBayes(words) {
         if (!words.length) return this.getDefaultProbs();
 
         const logProbs = new Map();
-        
+
         for (const [sentiment, prior] of this.model.classPriors) {
             let logProb = Math.log(prior);
             const sentimentWords = this.model.wordProbs.get(sentiment);
-            
+
             for (const word of words) {
                 const wordProb = sentimentWords.get(word) ?? this.config.smoothing;
                 logProb += Math.log(wordProb);
             }
-            
+
             logProbs.set(sentiment, logProb);
         }
 
@@ -209,7 +199,6 @@ class SentimentAnalyzer {
         return new Map([['positive', 0.33], ['negative', 0.33], ['neutral', 0.34]]);
     }
 
-    // Detección de emociones optimizada
     detectEmotions(words) {
         if (!words.length) return {};
 
@@ -228,7 +217,6 @@ class SentimentAnalyzer {
         return emotions;
     }
 
-    // Mapeo de puntuación a emoji optimizado
     scoreToEmoji(score) {
         if (score >= 0.4) return '😄';
         if (score >= 0.15) return '😊';
@@ -237,33 +225,28 @@ class SentimentAnalyzer {
         return '😐';
     }
 
-    // Análisis principal con cache
     analyze(text) {
         if (!text?.trim()) return this.getDefaultResult();
 
-        // Verificar cache
         if (this.cache.has(text)) {
             return this.cache.get(text);
         }
 
         const cleaned = this.preprocessText(text);
         const words = cleaned.split(' ').filter(w => w.length > 0);
-        
+
         if (words.length < this.config.minWords) {
             return this.getDefaultResult();
         }
 
-        // Análisis principal
         const heuristicScore = this.scoreHeuristic(words);
         const bayesProbs = this.predictNaiveBayes(words);
         const emotions = this.detectEmotions(words);
 
-        // Combinar puntuaciones
         const bayesScore = bayesProbs.get('positive') - bayesProbs.get('negative');
-        const finalScore = (heuristicScore * this.config.heuristicWeight + 
-                          bayesScore * this.config.bayesWeight);
+        const finalScore = (heuristicScore * this.config.heuristicWeight +
+            bayesScore * this.config.bayesWeight);
 
-        // Calcular confianza
         const confidence = this.calculateConfidence(heuristicScore, bayesProbs);
         const mood = this.scoreToEmoji(finalScore);
 
@@ -283,7 +266,6 @@ class SentimentAnalyzer {
             }
         };
 
-        // Guardar en cache
         this.updateCache(text, result);
         return result;
     }
@@ -319,7 +301,6 @@ class SentimentAnalyzer {
         };
     }
 
-    // Métodos de utilidad optimizados
     getMood(text) {
         return this.analyze(text).mood;
     }
@@ -333,11 +314,11 @@ class SentimentAnalyzer {
 
     getStatistics(texts) {
         if (!texts?.length) return null;
-        
+
         const results = this.analyzeBatch(texts);
         const scores = results.map(r => r.result.score);
         const sentiments = results.map(r => r.result.sentiment);
-        
+
         const sentimentCounts = sentiments.reduce((acc, sentiment) => {
             acc[sentiment] = (acc[sentiment] || 0) + 1;
             return acc;
@@ -355,12 +336,10 @@ class SentimentAnalyzer {
         };
     }
 
-    // Método para limpiar cache si es necesario
     clearCache() {
         this.cache.clear();
     }
 
-    // Método para obtener métricas de rendimiento
     getPerformanceMetrics() {
         return {
             cacheSize: this.cache.size,

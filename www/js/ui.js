@@ -7,16 +7,329 @@ class UIManager {
         this.currentMonth = new Date();
         this.isInitialized = false;
         this.toastQueue = [];
+        this.virtualScrollConfig = {
+            itemHeight: 200,
+            containerHeight: 0,
+            visibleItems: 0,
+            scrollTop: 0,
+            totalItems: 0,
+            bufferSize: 5,
+            startIndex: 0,
+            endIndex: 0
+        };
+        this.allEntries = [];
+        this.filteredEntries = [];
+        this.virtualScrollContainer = null;
+        this.virtualScrollViewport = null;
+        this.virtualScrollContent = null;
+        this.resizeObserver = null;
     }
 
     init() {
         this.setupNavigationListeners();
         this.setupDateDisplay();
         this.setupGestureNavigation();
+        this.setupVirtualScroll();
         this.isInitialized = true;
     }
 
-    setupNavigationListeners() {        // Navigation event listeners
+    setupVirtualScroll() {
+        const entriesView = document.getElementById('entries-view');
+        if (!entriesView) return;
+
+        const existingContainer = document.getElementById('virtual-scroll-container');
+        if (existingContainer) {
+            this.virtualScrollContainer = existingContainer;
+        } else {
+            this.createVirtualScrollStructure();
+        }
+
+        this.setupVirtualScrollListeners();
+        this.setupResizeObserver();
+    }
+
+    createVirtualScrollStructure() {
+        const entriesView = document.getElementById('entries-view');
+        const entriesList = document.getElementById('entries-list');
+
+        if (!entriesView || !entriesList) return;
+
+        // Create virtual scroll container
+        const container = document.createElement('div');
+        container.id = 'virtual-scroll-container';
+        container.className = 'h-full overflow-auto';
+        container.style.position = 'relative';
+
+        // Create viewport
+        const viewport = document.createElement('div');
+        viewport.id = 'virtual-scroll-viewport';
+        viewport.className = 'relative';
+        viewport.style.height = '0px';
+
+        // Create content container
+        const content = document.createElement('div');
+        content.id = 'virtual-scroll-content';
+        content.className = 'absolute top-0 left-0 right-0';
+        content.style.transform = 'translateY(0px)';
+
+        viewport.appendChild(content);
+        container.appendChild(viewport);
+
+        // Replace entries list with virtual scroll container
+        entriesList.parentNode.replaceChild(container, entriesList);
+
+        this.virtualScrollContainer = container;
+        this.virtualScrollViewport = viewport;
+        this.virtualScrollContent = content;
+    }
+
+    setupVirtualScrollListeners() {
+        if (!this.virtualScrollContainer) return;
+
+        const throttledScrollHandler = this.throttle(this.handleVirtualScroll.bind(this), 16);
+        this.virtualScrollContainer.addEventListener('scroll', throttledScrollHandler);
+
+        this.virtualScrollContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            this.virtualScrollContainer.scrollTop += e.deltaY;
+        }, { passive: false });
+    }
+
+    setupResizeObserver() {
+        if (!this.virtualScrollContainer || !window.ResizeObserver) return;
+
+        this.resizeObserver = new ResizeObserver(() => {
+            this.updateVirtualScrollDimensions();
+            this.renderVirtualScrollItems();
+        });
+
+        this.resizeObserver.observe(this.virtualScrollContainer);
+    }
+
+    updateVirtualScrollDimensions() {
+        if (!this.virtualScrollContainer) return;
+
+        const containerRect = this.virtualScrollContainer.getBoundingClientRect();
+        this.virtualScrollConfig.containerHeight = containerRect.height;
+        this.virtualScrollConfig.visibleItems = Math.ceil(containerRect.height / this.virtualScrollConfig.itemHeight);
+
+        if (this.virtualScrollViewport) {
+            this.virtualScrollViewport.style.height = `${this.filteredEntries.length * this.virtualScrollConfig.itemHeight}px`;
+        }
+    }
+
+    handleVirtualScroll() {
+        if (!this.virtualScrollContainer) return;
+
+        this.virtualScrollConfig.scrollTop = this.virtualScrollContainer.scrollTop;
+        this.calculateVisibleRange();
+        this.renderVirtualScrollItems();
+    }
+
+    calculateVisibleRange() {
+        const { scrollTop, itemHeight, visibleItems, bufferSize } = this.virtualScrollConfig;
+        const totalItems = this.filteredEntries.length;
+
+        const startIndex = Math.floor(scrollTop / itemHeight);
+        const endIndex = Math.min(startIndex + visibleItems + bufferSize * 2, totalItems);
+
+        this.virtualScrollConfig.startIndex = Math.max(0, startIndex - bufferSize);
+        this.virtualScrollConfig.endIndex = endIndex;
+    }
+
+    renderVirtualScrollItems() {
+        if (!this.virtualScrollContent) return;
+
+        const { startIndex, endIndex } = this.virtualScrollConfig;
+        const visibleEntries = this.filteredEntries.slice(startIndex, endIndex);
+
+        this.virtualScrollContent.innerHTML = '';
+
+        if (visibleEntries.length === 0) {
+            this.renderEmptyState();
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        visibleEntries.forEach((entry, index) => {
+            const itemElement = this.createVirtualScrollItem(entry, startIndex + index);
+            fragment.appendChild(itemElement);
+        });
+
+        this.virtualScrollContent.appendChild(fragment);
+
+        const offsetY = startIndex * this.virtualScrollConfig.itemHeight;
+        this.virtualScrollContent.style.transform = `translateY(${offsetY}px)`;
+    }
+
+    createVirtualScrollItem(entry, index) {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'virtual-scroll-item';
+        itemElement.style.height = `${this.virtualScrollConfig.itemHeight}px`;
+        itemElement.style.padding = '1rem';
+        itemElement.style.borderBottom = '1px solid var(--border-color, #e5e7eb)';
+        itemElement.setAttribute('data-index', index);
+
+        const date = new Date(entry.date);
+        const formattedDate = this.formatDate(date, 'short');
+        const preview = entry.content.substring(0, 150) + (entry.content.length > 150 ? '...' : '');
+        const moodDisplay = entry.mood ? `<span class="text-2xl">${entry.mood}</span>` : '';
+
+        const photoPath = entry.photo_path || entry.photoPath;
+        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;
+        const photoDisplay = thumbnailPath ?
+            `<div class="entry-thumbnail-small bg-gray-100 dark:bg-gray-600 flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden thumbnail-loading" title="Ver foto completa">
+                <img src="${thumbnailPath}" 
+                     alt="Foto de la entrada" 
+                     class="w-full h-full object-cover opacity-0 transition-opacity duration-300" 
+                     loading="lazy"
+                     onload="this.style.opacity='1'; this.parentElement.classList.remove('thumbnail-loading')"
+                     onerror="this.parentElement.classList.remove('thumbnail-loading'); this.parentElement.classList.add('thumbnail-error'); this.parentElement.innerHTML='<div class=&quot;w-full h-full flex items-center justify-center&quot;><svg class=&quot;w-6 h-6 text-gray-400&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; viewBox=&quot;0 0 24 24&quot;><path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z&quot;></path></svg></div>'"
+                     onclick="event.stopPropagation(); ui.showImagePreview('${photoPath || thumbnailPath}')">
+            </div>` : '';
+
+        itemElement.innerHTML = `
+            <div class="entry-card cursor-pointer h-full flex flex-col justify-between" onclick="ui.selectDate(new Date('${entry.date}'))">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center space-x-3 flex-1">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-lg">${formattedDate}</h3>
+                            <p class="text-sm text-notion-gray dark:text-notion-gray-dark">
+                                ${entry.word_count || entry.wordCount || 0} palabras
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                        ${moodDisplay}
+                        ${photoDisplay}
+                    </div>
+                </div>
+                <p class="text-notion-text dark:text-notion-text-dark leading-relaxed flex-1 overflow-hidden">
+                    ${preview}
+                </p>
+            </div>
+        `;
+
+        return itemElement;
+    }
+
+    renderEmptyState() {
+        if (!this.virtualScrollContent) return;
+
+        this.virtualScrollContent.innerHTML = `
+            <div class="text-center py-12 text-notion-gray dark:text-notion-gray-dark">
+                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                </svg>
+                <h3 class="text-lg font-semibold mb-2">No hay entradas aún</h3>
+                <p>Comienza escribiendo tu primera entrada de diario</p>
+            </div>
+        `;
+    }
+
+    async loadAllEntries() {
+        if (!window.db) return;
+
+        try {
+            this.showLoading();
+
+            // Load all entries for virtual scrolling
+            const entries = await window.db.getAllEntries();
+            this.allEntries = entries;
+            this.filteredEntries = entries;
+
+            this.initializeVirtualScroll();
+
+        } catch (error) {
+            console.error('Error loading entries:', error);
+            this.showToast('Error al cargar las entradas', 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    initializeVirtualScroll() {
+        if (!this.virtualScrollContainer) {
+            this.setupVirtualScroll();
+        }
+
+        this.updateVirtualScrollDimensions();
+        this.calculateVisibleRange();
+        this.renderVirtualScrollItems();
+    }
+
+    async performSearch(query) {
+        if (!window.db || query.trim().length < 2) {
+            this.filteredEntries = this.allEntries;
+            this.initializeVirtualScroll();
+            return;
+        }
+
+        try {
+            const results = await window.db.searchEntries(query.trim());
+            this.filteredEntries = results;
+            this.initializeVirtualScroll();
+
+            // Scroll to top after search
+            if (this.virtualScrollContainer) {
+                this.virtualScrollContainer.scrollTop = 0;
+            }
+
+        } catch (error) {
+            console.error('Error searching entries:', error);
+            this.showToast('Error en la búsqueda', 'error');
+        }
+    }
+
+    // Utility function for throttling
+    throttle(func, limit) {
+        let lastFunc;
+        let lastRan;
+        return function (...args) {
+            if (!lastRan) {
+                func.apply(this, args);
+                lastRan = Date.now();
+            } else {
+                clearTimeout(lastFunc);
+                lastFunc = setTimeout(() => {
+                    if ((Date.now() - lastRan) >= limit) {
+                        func.apply(this, args);
+                        lastRan = Date.now();
+                    }
+                }, limit - (Date.now() - lastRan));
+            }
+        };
+    }
+
+    // Clean up virtual scroll resources
+    destroyVirtualScroll() {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+
+        if (this.virtualScrollContainer) {
+            this.virtualScrollContainer.removeEventListener('scroll', this.handleVirtualScroll);
+        }
+
+        this.virtualScrollContainer = null;
+        this.virtualScrollViewport = null;
+        this.virtualScrollContent = null;
+    }
+
+    // Override existing methods to work with virtual scrolling
+    renderEntriesList(entries) {
+        // Update entries data
+        this.allEntries = entries;
+        this.filteredEntries = entries;
+
+        // Use virtual scrolling instead of traditional rendering
+        this.initializeVirtualScroll();
+    }
+
+    // Keep existing methods unchanged
+    setupNavigationListeners() {
+        // Navigation event listeners
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 const view = e.target.dataset.view;
@@ -32,7 +345,9 @@ class UIManager {
                 this.triggerRippleEffect(e.target.closest('.material-tab'), e);
             });
         });
-    } triggerRippleEffect(tab, event) {
+    }
+
+    triggerRippleEffect(tab, event) {
         const ripple = tab.querySelector('.material-tab-ripple');
         if (!ripple) return;
 
@@ -110,8 +425,9 @@ class UIManager {
         } else if (viewName === 'entries') {
             this.loadAllEntries();
         }
-    } updateNavigationState(activeView) {
-        // Update top navigation tabs
+    }
+
+    updateNavigationState(activeView) {
         document.querySelectorAll('.nav-tab').forEach(tab => {
             if (tab.dataset.view === activeView) {
                 tab.classList.add('active');
@@ -120,7 +436,6 @@ class UIManager {
             }
         });
 
-        // Update Material Design bottom navigation
         document.querySelectorAll('.material-tab').forEach(tab => {
             if (tab.dataset.view === activeView) {
                 tab.classList.add('active');
@@ -131,7 +446,6 @@ class UIManager {
             }
         });
 
-        // Backwards compatibility: keep old bottom-nav-btn support if exists
         document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
             if (btn.dataset.view === activeView) {
                 btn.classList.add('active');
@@ -217,7 +531,6 @@ class UIManager {
             dayEl.className = 'calendar-day';
             dayEl.textContent = currentDate.getDate();
 
-            // Add classes based on day type
             if (currentDate.getMonth() !== month) {
                 dayEl.classList.add('other-month');
             }
@@ -226,7 +539,6 @@ class UIManager {
                 dayEl.classList.add('today');
             }
 
-            // Check if this day has an entry
             const dateStr = this.formatDateForStorage(currentDate);
             const hasEntry = monthEntries.some(entry => entry.date === dateStr);
             if (hasEntry) {
@@ -343,46 +655,15 @@ class UIManager {
         }
     }
 
-    async loadAllEntries() {
-        const entriesList = document.getElementById('entries-list');
-        if (!entriesList || !window.db) return;
-
-        try {
-            const entries = await window.db.getAllEntries(50);
-            this.renderEntriesList(entries);
-        } catch (error) {
-            console.error('Error loading entries:', error);
-            this.showToast('Error al cargar las entradas', 'error');
-        }
-    }
-
-    renderEntriesList(entries) {
-        const entriesList = document.getElementById('entries-list');
-        if (!entriesList) return;
-
-        if (entries.length === 0) {
-            entriesList.innerHTML = `
-                <div class="text-center py-12 text-notion-gray dark:text-notion-gray-dark">
-                    <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                    </svg>
-                    <h3 class="text-lg font-semibold mb-2">No hay entradas aún</h3>
-                    <p>Comienza escribiendo tu primera entrada de diario</p>
-                </div>
-            `;
-            return;
-        }
-
-        entriesList.innerHTML = entries.map(entry => this.createEntryCard(entry)).join('');
-    }
-
     createEntryCard(entry) {
         const date = new Date(entry.date);
         const formattedDate = this.formatDate(date, 'short');
         const preview = entry.content.substring(0, 150) + (entry.content.length > 150 ? '...' : '');
-        const moodDisplay = entry.mood ? `<span class="text-2xl">${entry.mood}</span>` : '';        // Generate photo display with actual thumbnail
+        const moodDisplay = entry.mood ? `<span class="text-2xl">${entry.mood}</span>` : '';
+
         const photoPath = entry.photo_path || entry.photoPath;
-        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath; const photoDisplay = thumbnailPath ?
+        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;
+        const photoDisplay = thumbnailPath ?
             `<div class="entry-thumbnail-large bg-gray-100 dark:bg-gray-600 flex-shrink-0 thumbnail-loading" title="Ver foto completa">
                 <img src="${thumbnailPath}" 
                      alt="Foto de la entrada" 
@@ -443,21 +724,6 @@ class UIManager {
         }
     }
 
-    async performSearch(query) {
-        if (!window.db || query.trim().length < 2) {
-            this.loadAllEntries();
-            return;
-        }
-
-        try {
-            const results = await window.db.searchEntries(query.trim());
-            this.renderEntriesList(results);
-        } catch (error) {
-            console.error('Error searching entries:', error);
-            this.showToast('Error en la búsqueda', 'error');
-        }
-    }
-
     updateDarkModeIcon() {
         const lightIcon = document.getElementById('light-mode-icon');
         const darkIcon = document.getElementById('dark-mode-icon');
@@ -472,7 +738,9 @@ class UIManager {
                 darkIcon.classList.add('hidden');
             }
         }
-    } setupDarkMode() {
+    }
+
+    setupDarkMode() {
         const toggle = document.getElementById('dark-mode-toggle');
         if (!toggle) return;
 
@@ -483,16 +751,14 @@ class UIManager {
 
             this.updateDarkModeIcon();
 
-            // Save preference
             if (window.db) {
                 await window.db.setSetting('darkMode', isDark.toString());
             }
 
-            // Update status bar and splash screen for native platforms
             try {
                 const { StatusBar } = await import('@capacitor/status-bar');
                 const { Capacitor } = await import('@capacitor/core');
-                
+
                 if (Capacitor.isNativePlatform()) {
                     await StatusBar.setStyle({
                         style: isDark ? 'Light' : 'Dark'
@@ -502,11 +768,12 @@ class UIManager {
                     });
                 }
             } catch (error) {
-                // StatusBar not available
                 console.warn('StatusBar not available:', error);
             }
         });
-    } async loadDarkModePreference() {
+    }
+
+    async loadDarkModePreference() {
         if (!window.db) return;
 
         try {
@@ -514,7 +781,6 @@ class UIManager {
             if (darkMode === 'true') {
                 document.documentElement.classList.add('dark');
             }
-            // Actualizar icono después de cargar la preferencia
             this.updateDarkModeIcon();
         } catch (error) {
             console.error('Error loading dark mode preference:', error);
@@ -637,6 +903,111 @@ class UIManager {
                 }
             }
         });
+    }
+
+    // Additional utility methods for virtual scrolling optimization
+
+    /**
+     * Smooth scroll to a specific entry index
+     */
+    scrollToIndex(index) {
+        if (!this.virtualScrollContainer || index < 0 || index >= this.filteredEntries.length) {
+            return;
+        }
+
+        const targetScrollTop = index * this.virtualScrollConfig.itemHeight;
+        this.virtualScrollContainer.scrollTo({
+            top: targetScrollTop,
+            behavior: 'smooth'
+        });
+    }
+
+    /**
+     * Find and scroll to an entry by date
+     */
+    scrollToDate(date) {
+        const dateStr = this.formatDateForStorage(new Date(date));
+        const index = this.filteredEntries.findIndex(entry => entry.date === dateStr);
+
+        if (index !== -1) {
+            this.scrollToIndex(index);
+        }
+    }
+
+    /**
+     * Get currently visible entries for analytics or lazy loading
+     */
+    getVisibleEntries() {
+        const { startIndex, endIndex } = this.virtualScrollConfig;
+        return this.filteredEntries.slice(startIndex, endIndex);
+    }
+
+    /**
+     * Dynamically adjust item height based on content
+     */
+    adjustItemHeight(minHeight = 150, maxHeight = 300) {
+        // Calculate average content length
+        const avgContentLength = this.filteredEntries.reduce((sum, entry) => {
+            return sum + (entry.content ? entry.content.length : 0);
+        }, 0) / this.filteredEntries.length;
+
+        // Adjust height based on content complexity
+        let newHeight = minHeight;
+        if (avgContentLength > 200) {
+            newHeight = Math.min(minHeight + (avgContentLength - 200) * 0.3, maxHeight);
+        }
+
+        this.virtualScrollConfig.itemHeight = Math.ceil(newHeight);
+        this.updateVirtualScrollDimensions();
+        this.renderVirtualScrollItems();
+    }
+
+    /**
+     * Preload thumbnails for visible items
+     */
+    preloadVisibleThumbnails() {
+        const visibleEntries = this.getVisibleEntries();
+
+        visibleEntries.forEach(entry => {
+            const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath;
+            if (thumbnailPath) {
+                const img = new Image();
+                img.src = thumbnailPath;
+            }
+        });
+    }
+
+    /**
+     * Export virtual scroll data for debugging
+     */
+    getVirtualScrollDebugInfo() {
+        return {
+            config: { ...this.virtualScrollConfig },
+            totalEntries: this.allEntries.length,
+            filteredEntries: this.filteredEntries.length,
+            visibleRange: {
+                start: this.virtualScrollConfig.startIndex,
+                end: this.virtualScrollConfig.endIndex,
+                count: this.virtualScrollConfig.endIndex - this.virtualScrollConfig.startIndex
+            },
+            containerHeight: this.virtualScrollConfig.containerHeight,
+            scrollPosition: this.virtualScrollConfig.scrollTop
+        };
+    }
+
+    /**
+     * Cleanup method to be called when component is destroyed
+     */
+    cleanup() {
+        this.destroyVirtualScroll();
+
+        // Clear other references
+        this.allEntries = [];
+        this.filteredEntries = [];
+
+        // Remove event listeners if needed
+        document.removeEventListener('touchstart', this.setupGestureNavigation);
+        document.removeEventListener('touchend', this.setupGestureNavigation);
     }
 }
 
