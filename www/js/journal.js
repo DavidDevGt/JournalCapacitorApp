@@ -18,7 +18,7 @@ class JournalManager {
         this.autoSaveTimeout = null;
         this.isInitialized = false;
 
-        // Auto mood detection properties
+        // Auto mood detect
         this.sentimentAnalyzer = null;
         this.autoMoodTimeout = null;
         this.lastAnalyzedText = '';
@@ -31,7 +31,6 @@ class JournalManager {
         await this.setupNotifications();
         await this.initSentimentAnalyzer();
 
-        // Generate missing thumbnails in the background
         setTimeout(() => {
             this.generateMissingThumbnails();
         }, 2000); // Wait 2 seconds to not interfere with initial load
@@ -107,7 +106,6 @@ class JournalManager {
         }
     }
 
-    // Auto mood detection functions
     async initSentimentAnalyzer() {
         try {
             // Dynamic import to avoid affecting initial performance
@@ -120,7 +118,6 @@ class JournalManager {
     }
 
     scheduleAutoMoodDetection(text) {
-        // Import settings helper
         const settings = window.getSettings ? window.getSettings() : { autoMoodDetection: true };
 
         if (!settings.autoMoodDetection || !this.sentimentAnalyzer) {
@@ -176,24 +173,20 @@ class JournalManager {
     }
 
     setAutoDetectedMood(mood) {
-        // Remove previous selections
         document.querySelectorAll('.mood-btn').forEach(btn => {
             btn.classList.remove('selected', 'auto-detected');
         });
 
-        // Select detected mood
         const moodBtn = document.querySelector(`[data-mood="${mood}"]`);
         if (moodBtn) {
             moodBtn.classList.add('selected', 'auto-detected');
             this.currentMood = mood;
 
-            // Subtle visual indicator that it was auto-detected
             this.showAutoMoodIndicator(moodBtn);
         }
     }
 
     showAutoMoodIndicator(moodBtn) {
-        // Add a subtle animation and indicator
         moodBtn.style.position = 'relative';
 
         // Create sparkle indicator
@@ -202,7 +195,6 @@ class JournalManager {
         indicator.innerHTML = '✨';
         moodBtn.appendChild(indicator);
 
-        // Remove indicator after animation
         setTimeout(() => {
             if (indicator.parentNode) {
                 indicator.parentNode.removeChild(indicator);
@@ -788,7 +780,6 @@ class JournalManager {
     async exportEntries() {
         if (!window.db) return;
 
-        console.log('Exporting entries...');
         try {
             const data = await window.db.exportData();
             const fileName = `journal-backup-${new Date().toISOString().split('T')[0]}.json`;
@@ -802,8 +793,6 @@ class JournalManager {
                 directory: Directory.Documents,
                 encoding: Encoding.UTF8
             });
-
-            console.log(`Backup saved as ${fileName}`);
 
             if (window.ui) {
                 window.ui.showToast(`Backup guardado en Documentos/${fileName}`, 'success');
@@ -825,20 +814,17 @@ class JournalManager {
         }
 
         try {
-            // Validate file size (max 10MB)
             const maxSize = 10 * 1024 * 1024; // 10MB
             if (file.size > maxSize) {
                 throw new Error(`El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo: 10MB`);
             }
 
-            // Validate file type
             if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
                 throw new Error('Solo se permiten archivos JSON (.json)');
             }
 
             const text = await file.text();
 
-            // Validate JSON structure before parsing
             if (!text.trim()) {
                 throw new Error('El archivo está vacío');
             }

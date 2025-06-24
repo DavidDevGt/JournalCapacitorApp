@@ -1,4 +1,6 @@
 import { Toast as CapacitorToast } from '@capacitor/toast';
+import { VirtualScrollManager } from './components/VirtualScrollManager';
+import { CalendarManager } from './components/CalendarManager';
 
 class UIManager {
     constructor() {
@@ -7,320 +9,50 @@ class UIManager {
         this.currentMonth = new Date();
         this.isInitialized = false;
         this.toastQueue = [];
-        this.virtualScrollConfig = {
-            itemHeight: 200,
-            containerHeight: 0,
-            visibleItems: 0,
-            scrollTop: 0,
-            totalItems: 0,
-            bufferSize: 5,
-            startIndex: 0,
-            endIndex: 0
-        };
-        this.allEntries = [];
-        this.filteredEntries = [];
-        this.virtualScrollContainer = null;
-        this.virtualScrollViewport = null;
-        this.virtualScrollContent = null;
-        this.resizeObserver = null;
+        this.virtualScrollManager = new VirtualScrollManager(this);
+        this.calendarManager = new CalendarManager(this);
     }
 
     init() {
         this.setupNavigationListeners();
         this.setupDateDisplay();
         this.setupGestureNavigation();
-        this.setupVirtualScroll();
+        // Inicializa el virtual scroll manager
+        this.virtualScrollManager.setup();
+        // Inicializa el calendar manager
+        this.calendarManager.setup();
         this.isInitialized = true;
     }
 
-    setupVirtualScroll() {
-        const entriesView = document.getElementById('entries-view');
-        if (!entriesView) return;
-
-        const existingContainer = document.getElementById('virtual-scroll-container');
-        if (existingContainer) {
-            this.virtualScrollContainer = existingContainer;
-        } else {
-            this.createVirtualScrollStructure();
-        }
-
-        this.setupVirtualScrollListeners();
-        this.setupResizeObserver();
-    }
-
-    createVirtualScrollStructure() {
-        const entriesView = document.getElementById('entries-view');
-        const entriesList = document.getElementById('entries-list');
-
-        if (!entriesView || !entriesList) return;
-
-        // Create virtual scroll container
-        const container = document.createElement('div');
-        container.id = 'virtual-scroll-container';
-        container.className = 'h-full overflow-auto';
-        container.style.position = 'relative';
-
-        // Create viewport
-        const viewport = document.createElement('div');
-        viewport.id = 'virtual-scroll-viewport';
-        viewport.className = 'relative';
-        viewport.style.height = '0px';
-
-        // Create content container
-        const content = document.createElement('div');
-        content.id = 'virtual-scroll-content';
-        content.className = 'absolute top-0 left-0 right-0';
-        content.style.transform = 'translateY(0px)';
-
-        viewport.appendChild(content);
-        container.appendChild(viewport);
-
-        entriesList.parentNode.replaceChild(container, entriesList);
-
-        this.virtualScrollContainer = container;
-        this.virtualScrollViewport = viewport;
-        this.virtualScrollContent = content;
-    }
-
-    setupVirtualScrollListeners() {
-        if (!this.virtualScrollContainer) return;
-
-        const throttledScrollHandler = this.throttle(this.handleVirtualScroll.bind(this), 16);
-        this.virtualScrollContainer.addEventListener('scroll', throttledScrollHandler);
-
-        this.virtualScrollContainer.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            this.virtualScrollContainer.scrollTop += e.deltaY;
-        }, { passive: false });
-    }
-
-    setupResizeObserver() {
-        if (!this.virtualScrollContainer || !window.ResizeObserver) return;
-
-        this.resizeObserver = new ResizeObserver(() => {
-            this.updateVirtualScrollDimensions();
-            this.renderVirtualScrollItems();
-        });
-
-        this.resizeObserver.observe(this.virtualScrollContainer);
-    }
-
-    updateVirtualScrollDimensions() {
-        if (!this.virtualScrollContainer) return;
-
-        const containerRect = this.virtualScrollContainer.getBoundingClientRect();
-        this.virtualScrollConfig.containerHeight = containerRect.height;
-        this.virtualScrollConfig.visibleItems = Math.ceil(containerRect.height / this.virtualScrollConfig.itemHeight);
-
-        if (this.virtualScrollViewport) {
-            this.virtualScrollViewport.style.height = `${this.filteredEntries.length * this.virtualScrollConfig.itemHeight}px`;
-        }
-    }
-
-    handleVirtualScroll() {
-        if (!this.virtualScrollContainer) return;
-
-        this.virtualScrollConfig.scrollTop = this.virtualScrollContainer.scrollTop;
-        this.calculateVisibleRange();
-        this.renderVirtualScrollItems();
-    }
-
-    calculateVisibleRange() {
-        const { scrollTop, itemHeight, visibleItems, bufferSize } = this.virtualScrollConfig;
-        const totalItems = this.filteredEntries.length;
-
-        const startIndex = Math.floor(scrollTop / itemHeight);
-        const endIndex = Math.min(startIndex + visibleItems + bufferSize * 2, totalItems);
-
-        this.virtualScrollConfig.startIndex = Math.max(0, startIndex - bufferSize);
-        this.virtualScrollConfig.endIndex = endIndex;
-    }
-
-    renderVirtualScrollItems() {
-        if (!this.virtualScrollContent) return;
-
-        const { startIndex, endIndex } = this.virtualScrollConfig;
-        const visibleEntries = this.filteredEntries.slice(startIndex, endIndex);
-
-        this.virtualScrollContent.innerHTML = '';
-
-        if (visibleEntries.length === 0) {
-            this.renderEmptyState();
-            return;
-        }
-
-        const fragment = document.createDocumentFragment();
-        visibleEntries.forEach((entry, index) => {
-            const itemElement = this.createVirtualScrollItem(entry, startIndex + index);
-            fragment.appendChild(itemElement);
-        });
-
-        this.virtualScrollContent.appendChild(fragment);
-
-        const offsetY = startIndex * this.virtualScrollConfig.itemHeight;
-        this.virtualScrollContent.style.transform = `translateY(${offsetY}px)`;
-    }
-
-    createVirtualScrollItem(entry, index) {
-        const itemElement = document.createElement('div');
-        itemElement.className = 'virtual-scroll-item';
-        itemElement.style.height = `${this.virtualScrollConfig.itemHeight}px`;
-
-        
-
-        itemElement.setAttribute('data-index', index);
-
-        const date = new Date(entry.date);
-        const formattedDate = this.formatDate(date, 'short');
-        const preview = entry.content.substring(0, 150) + (entry.content.length > 150 ? '...' : '');
-        const moodDisplay = entry.mood ? `<span class="text-2xl">${entry.mood}</span>` : '';
-
-        const photoPath = entry.photo_path || entry.photoPath;
-        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;
-        const photoDisplay = thumbnailPath ?
-            `<div class="entry-thumbnail-small bg-gray-100 dark:bg-gray-600 flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden thumbnail-loading" title="Ver foto completa">
-                <img src="${thumbnailPath}" 
-                     alt="Foto de la entrada" 
-                     class="w-full h-full object-cover opacity-0 transition-opacity duration-300" 
-                     loading="lazy"
-                     onload="this.style.opacity='1'; this.parentElement.classList.remove('thumbnail-loading')"
-                     onerror="this.parentElement.classList.remove('thumbnail-loading'); this.parentElement.classList.add('thumbnail-error'); this.parentElement.innerHTML='<div class=&quot;w-full h-full flex items-center justify-center&quot;><svg class=&quot;w-6 h-6 text-gray-400&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; viewBox=&quot;0 0 24 24&quot;><path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z&quot;></path></svg></div>'"
-                     onclick="event.stopPropagation(); ui.showImagePreview('${photoPath || thumbnailPath}')">
-            </div>` : '';
-
-        itemElement.innerHTML = `
-            <div class="entry-card cursor-pointer h-full flex flex-col justify-between" onclick="ui.selectDate(new Date('${entry.date}'))">
-                <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center space-x-3 flex-1">
-                        <div class="flex-1">
-                            <h3 class="font-semibold text-lg">${formattedDate}</h3>
-                            <p class="text-sm text-notion-gray dark:text-notion-gray-dark">
-                                ${entry.word_count || entry.wordCount || 0} palabras
-                            </p>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-2 flex-shrink-0">
-                        ${moodDisplay}
-                        ${photoDisplay}
-                    </div>
-                </div>
-                <p class="text-notion-text dark:text-notion-text-dark leading-relaxed flex-1 overflow-hidden">
-                    ${preview}
-                </p>
-            </div>
-        `;
-
-        return itemElement;
-    }
-
-    renderEmptyState() {
-        if (!this.virtualScrollContent) return;
-
-        this.virtualScrollContent.innerHTML = `
-            <div class="text-center py-12 text-notion-gray dark:text-notion-gray-dark">
-                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                </svg>
-                <h3 class="text-lg font-semibold mb-2">No hay entradas aún</h3>
-                <p>Comienza escribiendo tu primera entrada de diario</p>
-            </div>
-        `;
-    }
-
-    async loadAllEntries() {
-        if (!window.db) return;
-
-        try {
-            this.showLoading();
-
-            // Load all entries for virtual scrolling
-            const entries = await window.db.getAllEntries();
-            this.allEntries = entries;
-            this.filteredEntries = entries;
-
-            this.initializeVirtualScroll();
-
-        } catch (error) {
-            console.error('Error loading entries:', error);
-            this.showToast('Error al cargar las entradas', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    initializeVirtualScroll() {
-        if (!this.virtualScrollContainer) {
-            this.setupVirtualScroll();
-        }
-
-        this.updateVirtualScrollDimensions();
-        this.calculateVisibleRange();
-        this.renderVirtualScrollItems();
-    }
-
-    async performSearch(query) {
-        if (!window.db || query.trim().length < 2) {
-            this.filteredEntries = this.allEntries;
-            this.initializeVirtualScroll();
-            return;
-        }
-
-        try {
-            const results = await window.db.searchEntries(query.trim());
-            this.filteredEntries = results;
-            this.initializeVirtualScroll();
-
-            if (this.virtualScrollContainer) {
-                this.virtualScrollContainer.scrollTop = 0;
-            }
-
-        } catch (error) {
-            console.error('Error searching entries:', error);
-            this.showToast('Error en la búsqueda', 'error');
-        }
-    }
-
-    throttle(func, limit) {
-        let lastFunc;
-        let lastRan;
-        return function (...args) {
-            if (!lastRan) {
-                func.apply(this, args);
-                lastRan = Date.now();
-            } else {
-                clearTimeout(lastFunc);
-                lastFunc = setTimeout(() => {
-                    if ((Date.now() - lastRan) >= limit) {
-                        func.apply(this, args);
-                        lastRan = Date.now();
-                    }
-                }, limit - (Date.now() - lastRan));
-            }
-        };
-    }
-
-    destroyVirtualScroll() {
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-            this.resizeObserver = null;
-        }
-
-        if (this.virtualScrollContainer) {
-            this.virtualScrollContainer.removeEventListener('scroll', this.handleVirtualScroll);
-        }
-
-        this.virtualScrollContainer = null;
-        this.virtualScrollViewport = null;
-        this.virtualScrollContent = null;
-    }
-
     renderEntriesList(entries) {
-        // Update entries data
-        this.allEntries = entries;
-        this.filteredEntries = entries;
+        this.virtualScrollManager.loadEntries(entries);
+    }
 
-        // Use virtual scrolling instead of traditional rendering
-        this.initializeVirtualScroll();
+    scrollToIndex(index) {
+        this.virtualScrollManager.scrollToIndex(index);
+    }
+
+    scrollToDate(date) {
+        this.virtualScrollManager.scrollToDate(date);
+    }
+
+    getVisibleEntries() {
+        return this.virtualScrollManager.getVisibleEntries();
+    }
+
+    adjustItemHeight(minHeight = 150, maxHeight = 300) {
+        this.virtualScrollManager.adjustItemHeight(minHeight, maxHeight);
+    }
+
+    getVirtualScrollDebugInfo() {
+        return this.virtualScrollManager.getDebugInfo();
+    }
+
+    cleanup() {
+        this.virtualScrollManager.destroy();
+
+        document.removeEventListener('touchstart', this.setupGestureNavigation);
+        document.removeEventListener('touchend', this.setupGestureNavigation);
     }
 
     setupNavigationListeners() {
@@ -413,7 +145,7 @@ class UIManager {
         }
 
         if (viewName === 'calendar') {
-            this.renderCalendar();
+            this.calendarManager.render();
         } else if (viewName === 'entries') {
             this.loadAllEntries();
         }
@@ -481,94 +213,7 @@ class UIManager {
         return date.toISOString().split('T')[0];
     }
 
-    async renderCalendar() {
-        const calendarGrid = document.getElementById('calendar-grid');
-        const currentMonthEl = document.getElementById('current-month');
-
-        if (!calendarGrid || !currentMonthEl) return;
-        currentMonthEl.textContent = this.formatDate(this.currentMonth, 'month');
-
-        calendarGrid.innerHTML = '';
-        const dayHeaders = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-        dayHeaders.forEach(day => {
-            const dayHeader = document.createElement('div');
-            dayHeader.className = 'calendar-header';
-            dayHeader.textContent = day;
-            calendarGrid.appendChild(dayHeader);
-        });
-
-        // Get month data
-        const year = this.currentMonth.getFullYear();
-        const month = this.currentMonth.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const startDate = new Date(firstDay);
-        startDate.setDate(startDate.getDate() - firstDay.getDay());
-
-        let monthEntries = [];
-        if (window.db && window.db.isInitialized) {
-            monthEntries = await window.db.getEntriesForMonth(year, month + 1);
-        }
-
-        const today = new Date();
-        const currentDate = new Date(startDate);
-
-        for (let i = 0; i < 42; i++) { // 6 weeks
-            const dayEl = document.createElement('div');
-            dayEl.className = 'calendar-day';
-            dayEl.textContent = currentDate.getDate();
-
-            if (currentDate.getMonth() !== month) {
-                dayEl.classList.add('other-month');
-            }
-
-            if (this.isSameDay(currentDate, today)) {
-                dayEl.classList.add('today');
-            }
-
-            const dateStr = this.formatDateForStorage(currentDate);
-            const hasEntry = monthEntries.some(entry => entry.date === dateStr);
-            if (hasEntry) {
-                dayEl.classList.add('has-entry');
-
-                const entryWithMood = monthEntries.find(entry => entry.date === dateStr && entry.mood);
-                if (entryWithMood) {
-                    const moodIndicator = document.createElement('span');
-                    moodIndicator.className = 'absolute top-0 right-0 text-xs';
-                    moodIndicator.textContent = entryWithMood.mood;
-                    dayEl.style.position = 'relative';
-                    dayEl.appendChild(moodIndicator);
-                }
-            }
-            dayEl.addEventListener('click', () => {
-                if (currentDate.getMonth() === month) {
-                    this.selectDate(new Date(currentDate));
-                }
-            });
-
-            calendarGrid.appendChild(dayEl);
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-    }
-
-    setupCalendarNavigation() {
-        const prevBtn = document.getElementById('prev-month');
-        const nextBtn = document.getElementById('next-month');
-
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                this.currentMonth.setMonth(this.currentMonth.getMonth() - 1);
-                this.renderCalendar();
-            });
-        }
-
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                this.currentMonth.setMonth(this.currentMonth.getMonth() + 1);
-                this.renderCalendar();
-            });
-        }
-    } selectDate(date) {
+    selectDate(date) {
         console.log(`📅 Selecting date: ${date}`);
 
         // Actualizar fecha local primero
@@ -652,46 +297,85 @@ class UIManager {
         if (app) {
             app.classList.remove('hidden');
         }
-    }
-
-    createEntryCard(entry) {
+    }    createEntryCard(entry) {
         const date = new Date(entry.date);
         const formattedDate = this.formatDate(date, 'short');
-        const preview = entry.content.substring(0, 150) + (entry.content.length > 150 ? '...' : '');
-        const moodDisplay = entry.mood ? `<span class="text-2xl">${entry.mood}</span>` : '';
+        const preview = entry.content.substring(0, 180) + (entry.content.length > 180 ? '...' : '');
+        const moodDisplay = entry.mood ? `<div class="mood-indicator flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-full flex items-center justify-center shadow-sm border border-blue-100 dark:border-blue-800/50">
+            <span class="text-2xl">${entry.mood}</span>
+        </div>` : '';
 
         const photoPath = entry.photo_path || entry.photoPath;
         const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;
+        
         const photoDisplay = thumbnailPath ?
-            `<div class="entry-thumbnail-large bg-gray-100 dark:bg-gray-600 flex-shrink-0 thumbnail-loading" title="Ver foto completa">
+            `<div class="entry-photo-card relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-300 group cursor-pointer">
                 <img src="${thumbnailPath}" 
                      alt="Foto de la entrada" 
-                     class="opacity-0 transition-opacity duration-300" 
+                     class="w-20 h-20 object-cover opacity-0 transition-all duration-500 group-hover:scale-105" 
                      loading="lazy"
-                     onload="this.style.opacity='1'; this.parentElement.classList.remove('thumbnail-loading')"
-                     onerror="this.parentElement.classList.remove('thumbnail-loading'); this.parentElement.classList.add('thumbnail-error'); this.parentElement.innerHTML='<div class=&quot;w-full h-full flex items-center justify-center&quot;><svg class=&quot;w-6 h-6 text-gray-400&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; viewBox=&quot;0 0 24 24&quot;><path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z&quot;></path></svg></div>'"
-                     onclick="event.stopPropagation(); ui.showImagePreview('${photoPath || thumbnailPath}')">
+                     onload="this.style.opacity='1'"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                <div class="w-20 h-20 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600" style="display:none;">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-xl"></div>
             </div>` : '';
 
         return `
-            <div class="entry-card cursor-pointer" onclick="ui.selectDate(new Date('${entry.date}'))">
-                <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center space-x-3">
-                        <div>
-                            <h3 class="font-semibold text-lg">${formattedDate}</h3>
-                            <p class="text-sm text-notion-gray dark:text-notion-gray-dark">
-                                ${entry.word_count || entry.wordCount || 0} palabras
-                            </p>
+            <div class="entry-card-material group relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-lg dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-1" onclick="ui.selectDate(new Date('${entry.date}'))">
+                <!-- Material Design accent line -->
+                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                <!-- Card content -->
+                <div class="relative p-6">
+                    <!-- Header with date and metadata -->
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">${formattedDate}</h3>
+                            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4">
+                                <div class="flex items-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <span>${entry.word_count || entry.wordCount || 0} palabras</span>
+                                </div>
+                                ${entry.content.length > 180 ? `
+                                <div class="flex items-center space-x-1 text-blue-600 dark:text-blue-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    <span class="font-medium">Leer más</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Mood and photo section -->
+                        <div class="flex items-center space-x-3 ml-4">
+                            ${moodDisplay}
+                            ${photoDisplay ? `<div onclick="event.stopPropagation(); ui.showImagePreview('${photoPath || thumbnailPath}')">${photoDisplay}</div>` : ''}
                         </div>
                     </div>
-                    <div class="flex items-center space-x-2">
-                        ${moodDisplay}
-                        ${photoDisplay}
+
+                    <!-- Content preview -->
+                    <div class="relative">
+                        <p class="text-gray-700 dark:text-gray-300 leading-relaxed text-base line-clamp-3">
+                            ${preview}
+                        </p>
+                        ${entry.content.length > 180 ? `
+                        <div class="absolute bottom-0 right-0 h-6 w-20 bg-gradient-to-l from-white dark:from-gray-800 to-transparent"></div>
+                        ` : ''}
                     </div>
                 </div>
-                <p class="text-notion-text dark:text-notion-text-dark leading-relaxed">
-                    ${preview}
-                </p>
+
+                <!-- Ripple effect overlay -->
+                <div class="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-pink-500/0 group-hover:from-blue-500/5 group-hover:via-purple-500/5 group-hover:to-pink-500/5 transition-all duration-500"></div>
+                </div>
             </div>
         `;
     }
@@ -904,105 +588,25 @@ class UIManager {
         });
     }
 
-    /**
-     * Smooth scroll to a specific entry index
-     */
-    scrollToIndex(index) {
-        if (!this.virtualScrollContainer || index < 0 || index >= this.filteredEntries.length) {
-            return;
-        }
+    async loadAllEntries() {
+        if (!window.db) return;
 
-        const targetScrollTop = index * this.virtualScrollConfig.itemHeight;
-        this.virtualScrollContainer.scrollTo({
-            top: targetScrollTop,
-            behavior: 'smooth'
-        });
-    }
-
-    /**
-     * Find and scroll to an entry by date
-     */
-    scrollToDate(date) {
-        const dateStr = this.formatDateForStorage(new Date(date));
-        const index = this.filteredEntries.findIndex(entry => entry.date === dateStr);
-
-        if (index !== -1) {
-            this.scrollToIndex(index);
+        try {
+            this.showLoading();
+            const entries = await window.db.getAllEntries();
+            this.renderEntriesList(entries);
+        } catch (error) {
+            console.error('Error loading entries:', error);
+            this.showToast('Error al cargar las entradas', 'error');
+        } finally {
+            this.hideLoading();
         }
     }
 
-    /**
-     * Get currently visible entries for analytics or lazy loading
-     */
-    getVisibleEntries() {
-        const { startIndex, endIndex } = this.virtualScrollConfig;
-        return this.filteredEntries.slice(startIndex, endIndex);
-    }
-
-    /**
-     * Dynamically adjust item height based on content
-     */
-    adjustItemHeight(minHeight = 150, maxHeight = 300) {
-        // Calculate average content length
-        const avgContentLength = this.filteredEntries.reduce((sum, entry) => {
-            return sum + (entry.content ? entry.content.length : 0);
-        }, 0) / this.filteredEntries.length;
-
-        // Adjust height based on content complexity
-        let newHeight = minHeight;
-        if (avgContentLength > 200) {
-            newHeight = Math.min(minHeight + (avgContentLength - 200) * 0.3, maxHeight);
+    setupCalendarNavigation() {
+        if (this.calendarManager && typeof this.calendarManager.setupNavigation === 'function') {
+            this.calendarManager.setupNavigation();
         }
-
-        this.virtualScrollConfig.itemHeight = Math.ceil(newHeight);
-        this.updateVirtualScrollDimensions();
-        this.renderVirtualScrollItems();
-    }
-
-    /**
-     * Preload thumbnails for visible items
-     */
-    preloadVisibleThumbnails() {
-        const visibleEntries = this.getVisibleEntries();
-
-        visibleEntries.forEach(entry => {
-            const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath;
-            if (thumbnailPath) {
-                const img = new Image();
-                img.src = thumbnailPath;
-            }
-        });
-    }
-
-    /**
-     * Export virtual scroll data for debugging
-     */
-    getVirtualScrollDebugInfo() {
-        return {
-            config: { ...this.virtualScrollConfig },
-            totalEntries: this.allEntries.length,
-            filteredEntries: this.filteredEntries.length,
-            visibleRange: {
-                start: this.virtualScrollConfig.startIndex,
-                end: this.virtualScrollConfig.endIndex,
-                count: this.virtualScrollConfig.endIndex - this.virtualScrollConfig.startIndex
-            },
-            containerHeight: this.virtualScrollConfig.containerHeight,
-            scrollPosition: this.virtualScrollConfig.scrollTop
-        };
-    }
-
-    /**
-     * Cleanup method to be called when component is destroyed
-     */
-    cleanup() {
-        this.destroyVirtualScroll();
-
-        this.allEntries = [];
-        this.filteredEntries = [];
-
-        document.removeEventListener('touchstart', this.setupGestureNavigation);
-        document.removeEventListener('touchend', this.setupGestureNavigation);
     }
 }
 
