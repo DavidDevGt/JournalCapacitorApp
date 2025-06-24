@@ -24,290 +24,587 @@ import {
     showSettingsModal
 } from './helpers.js';
 
+// Constants
+const CONSTANTS = {
+    LOADING_DELAY: 1000,
+    RESIZE_DEBOUNCE: 250,
+    ORIENTATION_DELAY: 500,
+    EMERGENCY_SPLASH_TIMEOUT: 3000,
+    FADE_OUT_DURATION: 200,
+    SPLASH_FADE_DURATION: 300
+};
+
+const SELECTORS = {
+    MENU_BTN: '#menu-btn',
+    MENU_OVERLAY: '#menu-overlay',
+    CLOSE_MENU: '#close-menu',
+    STATS_MENU_BTN: '#stats-menu-btn',
+    SETTINGS_MENU_BTN: '#settings-menu-btn',
+    EXPORT_MENU_BTN: '#export-menu-btn',
+    ABOUT_MENU_BTN: '#about-menu-btn',
+    CLOSE_STATS: '#close-stats',
+    CLOSE_ABOUT: '#close-about',
+    CLOSE_ICON: '#close-icon'
+};
+
+/**
+ * Main application class for Daily Journal
+ * Manages initialization, UI interactions, and cleanup
+ */
 class DailyJournalApp {
+    #isInitialized = false;
+    #activeModal = null;
+    #eventListeners = new Map();
+    #cleanupTasks = [];
+
     constructor() {
-        this.isInitialized = false;
-        this.activeModal = null;
-        this.resizeHandler = null;
-        this.orientationHandler = null;
-        this.capacitorCleanup = null;
-        this.pwaClenup = null;
-        this.offlineCleanup = null;
+        // Bind methods to maintain context
+        this.handleResize = debounce(() => handleResize(ui), CONSTANTS.RESIZE_DEBOUNCE);
+        this.handleOrientation = () => {
+            setTimeout(() => handleResize(ui), CONSTANTS.ORIENTATION_DELAY);
+        };
+        this.handleBeforeUnload = () => this.destroy();
+        this.handleGlobalError = (event) => this.#logError('Global error:', event.error);
+        this.handleUnhandledRejection = (event) => this.#logError('Unhandled promise rejection:', event.reason);
     }
 
+    /**
+     * Initialize the application
+     * @returns {Promise<void>}
+     */
     async init() {
+        if (this.#isInitialized) {
+            console.warn('App already initialized');
+            return;
+        }
+
         try {
             console.log('🚀 Initializing Daily Journal App...');
-
-            if (!validateEnvironment()) {
-                throw new Error('Environment validation failed');
-            }
-
-            ui.showLoading();
-
-            const capacitorModules = await initializeCapacitor();
-            if (capacitorModules) {
-                this.capacitorCleanup = setupCapacitorListeners(
-                    capacitorModules,
-                    this,
-                    ui,
-                    journal
-                );
-            }
-
-            await db.init();
-            window.db = db;
-
-            ui.init();            window.ui = ui;
-
-            await ui.loadDarkModePreference();
-
-            await journal.init();
-            window.journal = journal;            // Make settings functions globally available
-            window.getSettings = getSettings;
-            window.getSettingsAsync = getSettingsAsync;
-            window.saveSettings = saveSettings;
-
-            this.setupAdditionalUI();
-
-            setTimeout(() => {
-                ui.hideLoading();
-                console.log('✅ Daily Journal App initialized successfully!');
-            }, 1000);
-
-            this.isInitialized = true;
+            
+            await this.#validateAndSetupEnvironment();
+            await this.#initializeModules();
+            await this.#setupUI();
+            await this.#finalizeInitialization();
 
         } catch (error) {
             console.error('❌ Error initializing app:', error);
-            handleInitializationError(error);
+            await this.#handleInitializationFailure(error);
         }
     }
 
-    setupAdditionalUI() {
+    /**
+     * Validate environment and setup basic requirements
+     * @private
+     */
+    async #validateAndSetupEnvironment() {
+        if (!validateEnvironment()) {
+            throw new Error('Environment validation failed');
+        }
+        ui.showLoading();
+    }
+
+    /**
+     * Initialize core modules (Capacitor, DB, etc.)
+     * @private
+     */
+    async #initializeModules() {
+        // Initialize Capacitor if available
+        const capacitorModules = await initializeCapacitor();
+        if (capacitorModules) {
+            const cleanup = setupCapacitorListeners(capacitorModules, this, ui, journal);
+            this.#addCleanupTask(cleanup);
+        }
+
+        // Initialize database
+        await db.init();
+        this.#exposeGlobalAPI('db', db);
+
+        // Initialize UI
+        ui.init();
+        this.#exposeGlobalAPI('ui', ui);
+        await ui.loadDarkModePreference();
+
+        // Initialize journal
+        await journal.init();
+        this.#exposeGlobalAPI('journal', journal);
+
+        // Expose settings functions
+        this.#exposeGlobalAPI('getSettings', getSettings);
+        this.#exposeGlobalAPI('getSettingsAsync', getSettingsAsync);
+        this.#exposeGlobalAPI('saveSettings', saveSettings);
+    }
+
+    /**
+     * Setup UI components and event listeners
+     * @private
+     */
+    async #setupUI() {
+        this.#setupCoreUI();
+        this.#setupEventListeners();
+        this.#setupPWAFeatures();
+    }
+
+    /**
+     * Setup core UI components
+     * @private
+     */
+    #setupCoreUI() {
         ui.setupCalendarNavigation();
         ui.setupSearch();
         ui.setupDarkMode();
         journal.setupKeyboardShortcuts();
-        this.setupMenu();
-        this.setupSettings();
-
-        this.resizeHandler = debounce(() => {
-            handleResize(ui);
-        }, 250);
-        window.addEventListener('resize', this.resizeHandler);
-
-        this.orientationHandler = () => {
-            setTimeout(() => {
-                handleResize(ui);
-            }, 500);
-        };
-        window.addEventListener('orientationchange', this.orientationHandler);
-
-        this.pwaCleanup = setupPWAInstall();
-        this.offlineCleanup = setupOfflineDetection(ui);
+        this.#setupMenu();
     }
 
-    setupMenu() {
-        const menuBtn = document.getElementById('menu-btn');
-        if (!menuBtn) return;
+    /**
+     * Setup event listeners with proper cleanup tracking
+     * @private
+     */
+    #setupEventListeners() {
+        // Window resize and orientation
+        this.#addEventListener(window, 'resize', this.handleResize);
+        this.#addEventListener(window, 'orientationchange', this.handleOrientation);
+        
+        // App lifecycle
+        this.#addEventListener(window, 'beforeunload', this.handleBeforeUnload);
+        
+        // Global error handling
+        this.#addEventListener(window, 'error', this.handleGlobalError);
+        this.#addEventListener(window, 'unhandledrejection', this.handleUnhandledRejection);
+    }
 
-        menuBtn.addEventListener('click', () => {
-            this.showMenu();
+    /**
+     * Setup PWA features
+     * @private
+     */
+    #setupPWAFeatures() {
+        const pwaCleanup = setupPWAInstall();
+        const offlineCleanup = setupOfflineDetection(ui);
+        
+        this.#addCleanupTask(pwaCleanup);
+        this.#addCleanupTask(offlineCleanup);
+    }
+
+    /**
+     * Finalize initialization
+     * @private
+     */
+    async #finalizeInitialization() {
+        return new Promise(resolve => {
+            setTimeout(() => {
+                ui.hideLoading();
+                console.log('✅ Daily Journal App initialized successfully!');
+                this.#isInitialized = true;
+                resolve();
+            }, CONSTANTS.LOADING_DELAY);
         });
     }
 
-    showMenu() {
-        const existingMenu = document.getElementById('menu-overlay');
-        if (existingMenu) {
-            cleanupElement(existingMenu);
-            existingMenu.remove();
+    /**
+     * Handle initialization failure
+     * @param {Error} error 
+     * @private
+     */
+    async #handleInitializationFailure(error) {
+        ui.hideLoading();
+        handleInitializationError(error);
+        // Don't set initialized to true on failure
+    }
+
+    /**
+     * Setup menu functionality
+     * @private
+     */
+    #setupMenu() {
+        const menuBtn = document.querySelector(SELECTORS.MENU_BTN);
+        if (!menuBtn) {
+            console.warn('Menu button not found');
+            return;
         }
+
+        this.#addEventListener(menuBtn, 'click', () => this.showMenu());
+    }
+
+    /**
+     * Show menu modal
+     */
+    showMenu() {
+        this.#closeExistingModal(SELECTORS.MENU_OVERLAY);
 
         const menuHTML = generateMenuHTML();
-        const modal = createModalWithCleanup(menuHTML, (modal) => {
-            const overlay = modal;
-            const closeBtn = document.getElementById('close-menu');
-            const statsBtn = document.getElementById('stats-menu-btn');
-            const settingsBtn = document.getElementById('settings-menu-btn');
-            const exportBtn = document.getElementById('export-menu-btn');
-            const aboutBtn = document.getElementById('about-menu-btn');
+        const modal = this.#createModalWithHandlers(menuHTML, (modal) => {
+            const elements = this.#getMenuElements();
+            const closeMenu = () => this.#closeModal(modal);
 
-            const closeMenu = () => {
-                if (overlay) {
-                    cleanupElement(overlay);
-                    overlay.remove();
-                }
+            // Setup menu event handlers
+            const handlers = {
+                [SELECTORS.CLOSE_MENU]: closeMenu,
+                [SELECTORS.STATS_MENU_BTN]: () => { closeMenu(); this.showStats(); },
+                [SELECTORS.SETTINGS_MENU_BTN]: () => { closeMenu(); this.showSettings(); },
+                [SELECTORS.EXPORT_MENU_BTN]: () => { closeMenu(); journal.exportEntries(); },
+                [SELECTORS.ABOUT_MENU_BTN]: () => { closeMenu(); this.showAbout(); }
             };
 
-            const handlers = [
-                () => closeBtn?.removeEventListener('click', closeMenu),
-                () => overlay?.removeEventListener('click', (e) => e.target === overlay && closeMenu()),
-                () => statsBtn?.removeEventListener('click', () => { closeMenu(); this.showStats(); }),
-                () => settingsBtn?.removeEventListener('click', () => { closeMenu(); this.showSettings(); }),
-                () => exportBtn?.removeEventListener('click', () => { closeMenu(); journal.exportEntries(); }),
-                () => aboutBtn?.removeEventListener('click', () => { closeMenu(); this.showAbout(); })
-            ];
-
-            closeBtn?.addEventListener('click', closeMenu);
-            overlay?.addEventListener('click', (e) => e.target === overlay && closeMenu());
-            statsBtn?.addEventListener('click', () => { closeMenu(); this.showStats(); });
-            settingsBtn?.addEventListener('click', () => { closeMenu(); this.showSettings(); });
-            exportBtn?.addEventListener('click', () => { closeMenu(); journal.exportEntries(); });
-            aboutBtn?.addEventListener('click', () => { closeMenu(); this.showAbout(); });
-
-            setupElementCleanup(modal, handlers);
+            this.#setupModalHandlers(elements, handlers, modal, closeMenu);
         });
+
+        this.#activeModal = modal;
     }
 
-    setupSettings() {
-        console.log('Settings system initialized - accessible through menu');
+    /**
+     * Get menu elements
+     * @returns {Object} Menu elements
+     * @private
+     */
+    #getMenuElements() {
+        return {
+            [SELECTORS.CLOSE_MENU]: document.querySelector(SELECTORS.CLOSE_MENU),
+            [SELECTORS.STATS_MENU_BTN]: document.querySelector(SELECTORS.STATS_MENU_BTN),
+            [SELECTORS.SETTINGS_MENU_BTN]: document.querySelector(SELECTORS.SETTINGS_MENU_BTN),
+            [SELECTORS.EXPORT_MENU_BTN]: document.querySelector(SELECTORS.EXPORT_MENU_BTN),
+            [SELECTORS.ABOUT_MENU_BTN]: document.querySelector(SELECTORS.ABOUT_MENU_BTN)
+        };
     }
 
+    /**
+     * Show statistics modal
+     */
     async showStats() {
-        if (this.activeModal) {
-            cleanupElement(this.activeModal);
-            this.activeModal.remove();
+        try {
+            this.#closeActiveModal();
+
+            const stats = await journal.getWritingStats();
+            if (!stats) {
+                console.warn('No stats available');
+                return;
+            }
+
+            const statsHTML = generateStatsHTML(stats);
+            const modal = this.#createModalWithHandlers(statsHTML, (modal) => {
+                const closeBtn = document.querySelector(SELECTORS.CLOSE_STATS);
+                const closeStats = () => {
+                    this.#closeModal(modal);
+                    this.#activeModal = null;
+                };
+
+                this.#setupBasicModalHandlers(modal, closeStats, closeBtn);
+            });
+
+            this.#activeModal = modal;
+        } catch (error) {
+            console.error('Error showing stats:', error);
+            ui.showError('Failed to load statistics');
         }
+    }
 
-        const stats = await journal.getWritingStats();
-        if (!stats) return;
-
-        const statsHTML = generateStatsHTML(stats);
-        const modal = createModalWithCleanup(statsHTML, (modal) => {
-            const closeBtn = document.getElementById('close-stats');
-
-            const closeStats = () => {
-                if (modal) {
-                    cleanupElement(modal);
-                    modal.remove();
-                    this.activeModal = null;
-                }
-            };
-
-            const handlers = [
-                () => closeBtn?.removeEventListener('click', closeStats),
-                () => modal?.removeEventListener('click', (e) => e.target === modal && closeStats())
-            ];
-
-            closeBtn?.addEventListener('click', closeStats);
-            modal?.addEventListener('click', (e) => e.target === modal && closeStats());
-
-            setupElementCleanup(modal, handlers);
-        });
-
-        this.activeModal = modal;
-    }    async showSettings() {
-        if (this.activeModal) {
-            cleanupElement(this.activeModal);
-            this.activeModal.remove();
+    /**
+     * Show settings modal
+     */
+    async showSettings() {
+        try {
+            this.#closeActiveModal();
+            this.#activeModal = await showSettingsModal();
+        } catch (error) {
+            console.error('Error showing settings:', error);
+            ui.showError('Failed to load settings');
         }
+    }
 
-        // Use the new settings modal function from helpers
-        this.activeModal = await showSettingsModal();
-    }showAbout() {
-        const existingMenu = document.getElementById('menu-overlay');
-        if (existingMenu) {
-            cleanupElement(existingMenu);
-            existingMenu.remove();
-        }
+    /**
+     * Show about modal
+     */
+    showAbout() {
+        this.#closeExistingModal(SELECTORS.MENU_OVERLAY);
 
         const aboutHTML = generateAboutHTML();
-        const modal = createModalWithCleanup(aboutHTML, (modal) => {
-            const closeBtn = document.getElementById('close-about');
-            const closeIcon = document.getElementById('close-icon');
+        const modal = this.#createModalWithHandlers(aboutHTML, (modal) => {
+            const closeBtn = document.querySelector(SELECTORS.CLOSE_ABOUT);
+            const closeIcon = document.querySelector(SELECTORS.CLOSE_ICON);
+            
+            const closeAbout = () => this.#closeModalWithAnimation(modal);
 
-            const closeAbout = () => {
-                if (modal) {
-                    modal.classList.add('animate-fadeOut');
-                    setTimeout(() => {
-                        cleanupElement(modal);
-                        modal.remove();
-                    }, 200);
-                }
-            };
+            // Setup close handlers
+            const handlers = [closeBtn, closeIcon].filter(Boolean);
+            handlers.forEach(btn => {
+                this.#addEventListener(btn, 'click', closeAbout);
+            });
+
+            // Setup overlay click and escape key
+            this.#addEventListener(modal, 'click', (e) => {
+                if (e.target === modal) closeAbout();
+            });
 
             const handleEscape = (e) => {
                 if (e.key === 'Escape') {
                     closeAbout();
-                    document.removeEventListener('keydown', handleEscape);
+                    this.#removeEventListener(document, 'keydown', handleEscape);
                 }
             };
-
-            const handlers = [
-                () => closeBtn?.removeEventListener('click', closeAbout),
-                () => closeIcon?.removeEventListener('click', closeAbout),
-                () => modal?.removeEventListener('click', (e) => e.target === modal && closeAbout()),
-                () => document.removeEventListener('keydown', handleEscape)
-            ];
-
-            closeBtn?.addEventListener('click', closeAbout);
-            closeIcon?.addEventListener('click', closeAbout);
-            modal?.addEventListener('click', e => e.target === modal && closeAbout());
-            document.addEventListener('keydown', handleEscape);
-
-            setupElementCleanup(modal, handlers);
+            this.#addEventListener(document, 'keydown', handleEscape);
         });
     }
 
+    /**
+     * Cleanup and destroy the application
+     */
     destroy() {
-        if (this.activeModal) {
-            cleanupElement(this.activeModal);
-            this.activeModal.remove();
-            this.activeModal = null;
-        }
+        if (!this.#isInitialized) return;
 
-        if (this.resizeHandler) {
-            window.removeEventListener('resize', this.resizeHandler);
-        }
+        console.log('🧹 Cleaning up Daily Journal App...');
 
-        if (this.orientationHandler) {
-            window.removeEventListener('orientationchange', this.orientationHandler);
-        }
+        // Close active modal
+        this.#closeActiveModal();
 
-        if (this.capacitorCleanup) {
-            this.capacitorCleanup();
-        }
+        // Run all cleanup tasks
+        this.#cleanupTasks.forEach(cleanup => {
+            try {
+                if (typeof cleanup === 'function') {
+                    cleanup();
+                }
+            } catch (error) {
+                console.warn('Cleanup task failed:', error);
+            }
+        });
 
-        if (this.pwaCleanup) {
-            this.pwaCleanup();
-        }
+        // Remove all event listeners
+        this.#eventListeners.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
 
-        if (this.offlineCleanup) {
-            this.offlineCleanup();
-        }
-
-        if (journal) {
+        // Cleanup modules
+        if (journal && typeof journal.destroy === 'function') {
             journal.destroy();
         }
+
+        // Clear references
+        this.#eventListeners.clear();
+        this.#cleanupTasks.length = 0;
+        this.#isInitialized = false;
+
+        console.log('✅ Daily Journal App cleaned up successfully');
+    }
+
+    // Private utility methods
+
+    /**
+     * Add event listener with cleanup tracking
+     * @param {EventTarget} element 
+     * @param {string} event 
+     * @param {Function} handler 
+     * @private
+     */
+    #addEventListener(element, event, handler) {
+        element.addEventListener(event, handler);
+        this.#eventListeners.set(`${event}_${Date.now()}_${Math.random()}`, {
+            element,
+            event,
+            handler
+        });
+    }
+
+    /**
+     * Remove event listener
+     * @param {EventTarget} element 
+     * @param {string} event 
+     * @param {Function} handler 
+     * @private
+     */
+    #removeEventListener(element, event, handler) {
+        element.removeEventListener(event, handler);
+        // Remove from tracking
+        for (const [key, listener] of this.#eventListeners.entries()) {
+            if (listener.element === element && listener.event === event && listener.handler === handler) {
+                this.#eventListeners.delete(key);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Add cleanup task
+     * @param {Function} cleanup 
+     * @private
+     */
+    #addCleanupTask(cleanup) {
+        if (typeof cleanup === 'function') {
+            this.#cleanupTasks.push(cleanup);
+        }
+    }
+
+    /**
+     * Expose API globally with proper error handling
+     * @param {string} name 
+     * @param {*} api 
+     * @private
+     */
+    #exposeGlobalAPI(name, api) {
+        try {
+            window[name] = api;
+        } catch (error) {
+            console.warn(`Failed to expose ${name} globally:`, error);
+        }
+    }
+
+    /**
+     * Close existing modal by selector
+     * @param {string} selector 
+     * @private
+     */
+    #closeExistingModal(selector) {
+        const existing = document.querySelector(selector);
+        if (existing) {
+            cleanupElement(existing);
+            existing.remove();
+        }
+    }
+
+    /**
+     * Close active modal
+     * @private
+     */
+    #closeActiveModal() {
+        if (this.#activeModal) {
+            this.#closeModal(this.#activeModal);
+            this.#activeModal = null;
+        }
+    }
+
+    /**
+     * Close modal
+     * @param {HTMLElement} modal 
+     * @private
+     */
+    #closeModal(modal) {
+        if (modal) {
+            cleanupElement(modal);
+            modal.remove();
+        }
+    }
+
+    /**
+     * Close modal with animation
+     * @param {HTMLElement} modal 
+     * @private
+     */
+    #closeModalWithAnimation(modal) {
+        if (modal) {
+            modal.classList.add('animate-fadeOut');
+            setTimeout(() => {
+                this.#closeModal(modal);
+            }, CONSTANTS.FADE_OUT_DURATION);
+        }
+    }
+
+    /**
+     * Create modal with proper cleanup handlers
+     * @param {string} html 
+     * @param {Function} setupCallback 
+     * @returns {HTMLElement}
+     * @private
+     */
+    #createModalWithHandlers(html, setupCallback) {
+        return createModalWithCleanup(html, setupCallback);
+    }
+
+    /**
+     * Setup basic modal handlers (close button and overlay click)
+     * @param {HTMLElement} modal 
+     * @param {Function} closeHandler 
+     * @param {HTMLElement} closeBtn 
+     * @private
+     */
+    #setupBasicModalHandlers(modal, closeHandler, closeBtn) {
+        if (closeBtn) {
+            this.#addEventListener(closeBtn, 'click', closeHandler);
+        }
+        this.#addEventListener(modal, 'click', (e) => {
+            if (e.target === modal) closeHandler();
+        });
+    }
+
+    /**
+     * Setup modal handlers with multiple buttons
+     * @param {Object} elements 
+     * @param {Object} handlers 
+     * @param {HTMLElement} modal 
+     * @param {Function} closeHandler 
+     * @private
+     */
+    #setupModalHandlers(elements, handlers, modal, closeHandler) {
+        // Setup button handlers
+        Object.entries(handlers).forEach(([selector, handler]) => {
+            const element = elements[selector];
+            if (element) {
+                this.#addEventListener(element, 'click', handler);
+            }
+        });
+
+        // Setup overlay click
+        this.#addEventListener(modal, 'click', (e) => {
+            if (e.target === modal) closeHandler();
+        });
+    }
+
+    /**
+     * Log error with consistent formatting
+     * @param {string} message 
+     * @param {Error} error 
+     * @private
+     */
+    #logError(message, error) {
+        console.error(message, error);
+        // Could integrate with error reporting service here
+    }
+
+    // Public getters for debugging/testing
+    get isInitialized() {
+        return this.#isInitialized;
+    }
+
+    get hasActiveModal() {
+        return !!this.#activeModal;
     }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const app = new DailyJournalApp();
-    window.app = app;
+// Application bootstrap
+class AppBootstrap {
+    static async initialize() {
+        try {
+            const app = new DailyJournalApp();
+            window.app = app;
 
-    await app.init();
+            await app.init();
+            
+            AppBootstrap.setupEmergencySplashHide();
+            
+            return app;
+        } catch (error) {
+            console.error('Failed to bootstrap application:', error);
+            throw error;
+        }
+    }
 
-    window.addEventListener('beforeunload', () => {
-        app.destroy();
+    static setupEmergencySplashHide() {
+        window.hideSplashEmergency = async () => {
+            try {
+                const { SplashScreen } = await import('@capacitor/splash-screen');
+                await SplashScreen.hide({ fadeOutDuration: CONSTANTS.SPLASH_FADE_DURATION });
+                console.log('🚨 Emergency splash screen hide executed');
+            } catch (error) {
+                console.warn('Emergency splash hide failed:', error);
+            }
+        };
+
+        setTimeout(window.hideSplashEmergency, CONSTANTS.EMERGENCY_SPLASH_TIMEOUT);
+    }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    AppBootstrap.initialize().catch(error => {
+        console.error('Application bootstrap failed:', error);
+        // Could show user-friendly error message here
     });
 });
 
-window.addEventListener('error', (event) => {
-    console.error('Global error:', event.error);
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
-});
-
-window.hideSplashEmergency = async () => {
-    try {
-        const { SplashScreen } = await import('@capacitor/splash-screen');
-        await SplashScreen.hide({ fadeOutDuration: 300 });
-        console.log('🚨 Emergency splash screen hide executed');
-    } catch (error) {
-        console.warn('Emergency splash hide failed:', error);
-    }
-};
-setTimeout(window.hideSplashEmergency, 3000);
+export default DailyJournalApp;
