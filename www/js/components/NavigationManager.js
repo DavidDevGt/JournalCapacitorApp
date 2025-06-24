@@ -2,6 +2,7 @@ export class NavigationManager {
     constructor(uiManager) {
         this.ui = uiManager;
         this.views = ['today', 'calendar', 'entries'];
+        window.navigationManager = this;
     }
 
     setup() {
