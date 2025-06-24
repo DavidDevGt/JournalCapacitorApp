@@ -56,6 +56,8 @@ export class NavigationManager {
                     this.switchView(this.views[currentIndex + 1]);
                 }
             }
+            // Forzar actualización visual de tabs después de cualquier gesto
+            this.updateNavigationState(this.ui.currentView);
         });
     }
 
@@ -139,29 +141,33 @@ export class NavigationManager {
     }
 
     updateNavigationState(activeView) {
+        // Limpia cualquier clase de estado visual residual y estilos inline
+        document.querySelectorAll('.nav-tab, .material-tab, .bottom-nav-btn').forEach(tab => {
+            tab.classList.remove('active');
+            tab.setAttribute('aria-selected', 'false');
+            // Limpia estilos de borde y color inline si existen
+            tab.style.removeProperty('border');
+            tab.style.removeProperty('borderColor');
+            tab.style.removeProperty('borderBottomWidth');
+            tab.style.removeProperty('color');
+        });
+        // Aplica el estado activo correctamente
         document.querySelectorAll('.nav-tab').forEach(tab => {
             if (tab.dataset.view === activeView) {
                 tab.classList.add('active');
-            } else {
-                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'true');
             }
         });
-
         document.querySelectorAll('.material-tab').forEach(tab => {
             if (tab.dataset.view === activeView) {
                 tab.classList.add('active');
                 tab.setAttribute('aria-selected', 'true');
-            } else {
-                tab.classList.remove('active');
-                tab.setAttribute('aria-selected', 'false');
             }
         });
-
         document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
             if (btn.dataset.view === activeView) {
                 btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'true');
             }
         });
     }
