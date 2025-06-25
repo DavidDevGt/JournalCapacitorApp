@@ -35,7 +35,7 @@ class JournalManager {
 
         setTimeout(() => {
             this.generateMissingThumbnails();
-        }, 2000); // Wait 2 seconds to not interfere with initial load
+        }, 2000);
 
         this.isInitialized = true;
     }
@@ -150,11 +150,12 @@ class JournalManager {
             return;
         }
 
-        // Debounce to avoid overwhelming analysis
         this.autoMoodTimeout = setTimeout(() => {
             this.detectAndSetMood(trimmedText);
         }, 800); // Wait 800ms after stop typing
-    } detectAndSetMood(text) {
+    }
+
+    detectAndSetMood(text) {
         if (!this.sentimentAnalyzer || !text.trim()) {
             return;
         }
@@ -557,94 +558,196 @@ class JournalManager {
 
     async shareEntry() {
         try {
-            const content = this.journalTextarea ? this.journalTextarea.value : '';
-            const date = window.ui ? window.ui.formatDate(window.ui.currentDate, 'short') : new Date().toLocaleDateString();
+            // Extraer datos de la entrada
+            const entryData = this._extractEntryData();
 
-            if (!content.trim() && !this.currentMood && !this.currentPhoto) {
-                if (window.ui) {
-                    window.ui.showToast('No hay contenido para compartir', 'warning');
-                }
+            // Validar que hay contenido para compartir
+            if (!this._hasContentToShare(entryData)) {
+                this._showMessage('No hay contenido para compartir', 'warning');
                 return;
             }
 
-            let shareText = `📖 Mi entrada de diario - ${date}\n\n`;
+            // Generar texto principal de compartir
+            const shareText = this._buildShareText(entryData);
 
-            if (this.currentMood) {
-                shareText += `😊 Estado de ánimo: ${this.currentMood}\n\n`;
+            // Configurar opciones base
+            const shareOptions = this._buildBaseShareOptions(shareText);
+
+            // Procesar foto si existe
+            if (entryData.hasPhoto) {
+                await this._processPhotoForSharing(shareOptions, entryData.photo);
             }
 
-            if (content.trim()) {
-                shareText += `📝 ${content}\n\n`;
-            }
-
-            shareText += `✨ Creado con Daily Journal`;
-
-            const shareOptions = {
-                title: 'Mi entrada de diario',
-                text: shareText,
-                dialogTitle: 'Compartir entrada de diario'
-            };
-
-            if (this.currentPhoto && this.currentPhoto.startsWith('data:')) {
-                try {
-                    const { Filesystem, Directory } = await import('@capacitor/filesystem');
-
-                    const base64Data = this.currentPhoto.split(',')[1];
-                    const mimeType = this.currentPhoto.split(';')[0].split(':')[1];
-                    const extension = mimeType.includes('png') ? 'png' : 'jpg';
-
-                    const fileName = `journal_photo_${Date.now()}.${extension}`;
-
-                    const writeResult = await Filesystem.writeFile({
-                        path: fileName,
-                        data: base64Data,
-                        directory: Directory.Cache
-                    });
-
-                    const fileUri = await Filesystem.getUri({
-                        directory: Directory.Cache,
-                        path: fileName
-                    });
-
-                    shareOptions.url = fileUri.uri;
-                    shareText += '\n\n📷 Incluye foto del día';
-                    shareOptions.text = shareText;
-
-                    setTimeout(async () => {
-                        try {
-                            await Filesystem.deleteFile({
-                                path: fileName,
-                                directory: Directory.Cache
-                            });
-                        } catch (cleanupError) {
-                            console.warn('Error limpiando archivo temporal:', cleanupError);
-                        }
-                    }, 30000);
-
-                } catch (photoError) {
-                    console.warn('No se pudo crear archivo temporal para la foto:', photoError);
-                    // Fallback: compartir solo texto
-                    shareOptions.text = shareText + '\n\n📷 (Foto disponible en la entrada)';
-                }
-            }
-
-            await Share.share(shareOptions);
-            await this.triggerHapticFeedback('light');
-
-            if (window.ui) {
-                window.ui.showToast('Entrada compartida exitosamente', 'success');
-            }
+            // Ejecutar compartir
+            await this._executeShare(shareOptions);
 
         } catch (error) {
-            console.error('Error sharing entry:', error);
-            if (window.ui) {
-                if (error.message && error.message.includes('cancelled')) {
-                    window.ui.showToast('Compartir cancelado', 'info');
-                } else {
-                    window.ui.showToast('Error al compartir', 'error');
-                }
-            }
+            this._handleShareError(error);
         }
+    }
+
+    // Métodos auxiliares privados
+    _extractEntryData() {
+        const content = this.journalTextarea?.value?.trim() || '';
+        const date = window.ui?.formatDate(window.ui.currentDate, 'short') ||
+            new Date().toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+
+        return {
+            content,
+            date,
+            mood: this.currentMood,
+            photo: this.currentPhoto,
+            hasPhoto: this.currentPhoto?.startsWith('data:')
+        };
+    }
+
+    _hasContentToShare({ content, mood, photo }) {
+        return !!(content || mood || photo);
+    }
+
+    _buildShareText({ date, mood, content }) {
+        const sections = [
+            `📖 Mi entrada de diario - ${date}`,
+            mood && `😊 Estado de ánimo: ${mood}`,
+            content && `📝 ${content}`,
+            '✨ Creado con Daily Journal'
+        ];
+
+        return sections.filter(Boolean).join('\n\n');
+    }
+
+    _buildBaseShareOptions(text) {
+        return {
+            title: 'Mi entrada de diario',
+            text,
+            dialogTitle: 'Compartir entrada de diario'
+        };
+    }
+
+    async _processPhotoForSharing(shareOptions, photo) {
+        try {
+            const { fileUri, fileName } = await this._createTempPhotoFile(photo);
+
+            shareOptions.url = fileUri;
+            shareOptions.text += '\n\n📷 Incluye foto del día';
+
+            this._schedulePhotoCleanup(fileName);
+
+        } catch (photoError) {
+            console.warn('Error procesando foto para compartir:', photoError);
+            // Fallback graceful
+            shareOptions.text += '\n\n📷 (Foto disponible en la entrada)';
+        }
+    }
+
+    async _createTempPhotoFile(photoData) {
+        const { Filesystem, Directory } = await import('@capacitor/filesystem');
+
+        const { base64Data, mimeType } = this._parsePhotoData(photoData);
+        const fileName = this._generatePhotoFileName(mimeType);
+
+        await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache
+        });
+
+        const { uri } = await Filesystem.getUri({
+            directory: Directory.Cache,
+            path: fileName
+        });
+
+        return { fileUri: uri, fileName };
+    }
+
+    _parsePhotoData(photoData) {
+        const [mimeTypePart, base64Data] = photoData.split(',');
+        const mimeType = mimeTypePart.split(':')[1].split(';')[0];
+
+        return { base64Data, mimeType };
+    }
+
+    _generatePhotoFileName(mimeType) {
+        const extension = this._getFileExtension(mimeType);
+        const timestamp = Date.now();
+        return `journal_photo_${timestamp}.${extension}`;
+    }
+
+    _getFileExtension(mimeType) {
+        const extensionMap = {
+            'image/png': 'png',
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/webp': 'webp'
+        };
+
+        return extensionMap[mimeType] || 'jpg';
+    }
+
+    _schedulePhotoCleanup(fileName) {
+        const cleanupAttempts = [5000, 15000, 30000]; // 5s, 15s, 30s
+
+        cleanupAttempts.forEach(delay => {
+            setTimeout(async () => {
+                try {
+                    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+                    await Filesystem.deleteFile({
+                        path: fileName,
+                        directory: Directory.Cache
+                    });
+                } catch (error) {
+                    if (delay === cleanupAttempts[0]) {
+                        console.warn('Intento de limpieza de archivo temporal:', error);
+                    }
+                }
+            }, delay);
+        });
+    }
+
+    async _executeShare(shareOptions) {
+        await Share.share(shareOptions);
+        await this.triggerHapticFeedback?.('light');
+        this._showMessage('Entrada compartida exitosamente', 'success');
+    }
+
+    _handleShareError(error) {
+        console.error('Error al compartir entrada:', error);
+
+        const errorMessages = {
+            cancelled: { message: 'Compartir cancelado', type: 'info' },
+            network: { message: 'Error de conexión al compartir', type: 'error' },
+            permission: { message: 'Permisos insuficientes para compartir', type: 'error' },
+            default: { message: 'Error al compartir', type: 'error' }
+        };
+
+        const errorType = this._categorizeError(error);
+        const { message, type } = errorMessages[errorType] || errorMessages.default;
+
+        this._showMessage(message, type);
+    }
+
+    _categorizeError(error) {
+        const errorMessage = error.message?.toLowerCase() || '';
+
+        if (errorMessage.includes('cancelled') || errorMessage.includes('cancelado')) {
+            return 'cancelled';
+        }
+        if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+            return 'network';
+        }
+        if (errorMessage.includes('permission') || errorMessage.includes('denied')) {
+            return 'permission';
+        }
+
+        return 'default';
+    }
+
+    _showMessage(message, type) {
+        window.ui?.showToast(message, type);
     }
 
     async setupNotifications() {

@@ -3,18 +3,15 @@ import ui from './ui.js';
 import journal from './journal.js';
 import {
     initializeCapacitor,
-    handleDeepLink,
     handleResize,
     setupPWAInstall,
     setupOfflineDetection,
     setupCapacitorListeners,
     generateMenuHTML,
     generateStatsHTML,
-    generateSettingsHTML,
     generateAboutHTML,
     handleInitializationError,
     createModalWithCleanup,
-    setupElementCleanup,
     cleanupElement,
     debounce,
     validateEnvironment,
@@ -553,7 +550,8 @@ class DailyJournalApp {
      */
     #logError(message, error) {
         console.error(message, error);
-        // Could integrate with error reporting service here
+        // TODO: Implement proper error logging mechanism (e.g., send to server)
+        // For now, just log to console
     }
 
     // Public getters for debugging/testing
@@ -566,7 +564,6 @@ class DailyJournalApp {
     }
 }
 
-// Application bootstrap
 class AppBootstrap {
     static async initialize() {
         try {

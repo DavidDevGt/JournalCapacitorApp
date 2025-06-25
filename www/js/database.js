@@ -156,7 +156,6 @@ class DatabaseManager {
         if (!this.db) return;
 
         try {
-            // Migración para añadir columnas faltantes
             const tableInfo = await this.db.query('PRAGMA table_info(entries)');
             const columns = new Set((tableInfo.values || []).map(col => col.name));
 
