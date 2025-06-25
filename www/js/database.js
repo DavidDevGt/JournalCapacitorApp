@@ -1,376 +1,687 @@
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Capacitor } from '@capacitor/core';
 
+/**
+ * Gestiona la base de datos SQLite y localStorage como fallback
+
+ */
 class DatabaseManager {
+    static DB_NAME = 'journal_db';
+    static DB_VERSION = 1;
+    static STORAGE_PREFIX = 'journal_';
+    static MAX_RETRY_ATTEMPTS = 3;
+    static ALLOWED_SETTINGS = ['darkMode', 'notificationsEnabled', 'notificationTime'];
+    static DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
     constructor() {
         this.sqlite = new SQLiteConnection(CapacitorSQLite);
         this.db = null;
         this.isInitialized = false;
+        this.platform = Capacitor.getPlatform();
+        this.isWeb = this.platform === 'web';        
+        this.entryCache = new Map();
+        this.settingsCache = new Map();
+        this.cacheExpiry = 5 * 60 * 1000; // 5 minutos
     }
 
+    /**
+     * Inicializa la base de datos
+     * @returns {Promise<void>}
+     */
     async init() {
+        if (this.isInitialized) return;
+
         try {
-            if (Capacitor.getPlatform() === 'web') {
-                console.log('Using localStorage for web platform');
-                this.isInitialized = true;
-                return;
-            }
+            console.log(`Initializing database for platform: ${this.platform}`);
 
-            await this.sqlite.checkConnectionsConsistency();
-            const isConn = await this.sqlite.isConnection('journal_db', false);
-
-            if (!isConn.result) {
-                this.db = await this.sqlite.createConnection(
-                    'journal_db',
-                    false,
-                    'no-encryption',
-                    1,
-                    false
-                );
+            if (this.isWeb) {
+                await this._initWebStorage();
             } else {
-                this.db = await this.sqlite.retrieveConnection('journal_db', false);
+                await this._initSQLite();
             }
 
-            await this.db.open();
-            await this.createTables();
             this.isInitialized = true;
-
+            console.log('Database initialized successfully');
         } catch (error) {
-            console.error('Database initialization error:', error);
-            this.isInitialized = true;
+            console.error('Database initialization failed:', error);
+
+            if (!this.isWeb) {
+                console.log('Falling back to localStorage...');
+                await this._initWebStorage();
+                this.isInitialized = true;
+            }
+            throw new Error(`Database initialization failed: ${error.message}`);
         }
     }
 
-    async createTables() {
-        if (!this.db) return;
+    /**
+     * Inicializa almacenamiento web (localStorage)
+     * @private
+     */
+    async _initWebStorage() {
+        if (!this._isLocalStorageAvailable()) {
+            throw new Error('localStorage is not available');
+        }
+        console.log('Using localStorage for web platform');
+    }
 
-        const createTablesSQL = `
-            -- Entries table
+    /**
+     * Inicializa SQLite para plataformas nativas
+     * @private
+     */
+    async _initSQLite() {
+        await this.sqlite.checkConnectionsConsistency();
+        
+        const isConnected = await this.sqlite.isConnection(DatabaseManager.DB_NAME, false);
+        
+        if (!isConnected.result) {
+            this.db = await this.sqlite.createConnection(
+                DatabaseManager.DB_NAME,
+                false,
+                'no-encryption',
+                DatabaseManager.DB_VERSION,
+                false
+            );
+        } else {
+            this.db = await this.sqlite.retrieveConnection(DatabaseManager.DB_NAME, false);
+        }
+
+        await this.db.open();
+        await this._createTables();
+        await this._runMigrations();
+    }
+
+    /**
+     * Crea las tablas necesarias
+     * @private
+     */
+    async _createTables() {
+        if (!this.db) throw new Error('Database connection not available');
+
+        const sql = `
+            -- Tabla de entradas
             CREATE TABLE IF NOT EXISTS entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT UNIQUE NOT NULL,
-                content TEXT NOT NULL,
+                content TEXT NOT NULL DEFAULT '',
                 mood TEXT,
                 photo_path TEXT,
                 thumbnail_path TEXT,
                 word_count INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                -- Campos adicionales para futuras mejoras
+                tags TEXT, -- JSON array de tags
+                weather TEXT,
+                location TEXT,
+                is_favorite BOOLEAN DEFAULT 0
+            );
+
+            -- Tabla de configuraciones
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Settings table
-            CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
+            -- Tabla para metadatos de archivos
+            CREATE TABLE IF NOT EXISTS media_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entry_date TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                file_type TEXT NOT NULL, -- 'photo', 'audio', 'video'
+                file_size INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (entry_date) REFERENCES entries(date) ON DELETE CASCADE
             );
 
-            -- Create indexes for better performance
+            -- Índices para optimizar consultas
             CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date);
-            CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries(created_at);
+            CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_entries_mood ON entries(mood);
+            CREATE INDEX IF NOT EXISTS idx_entries_favorite ON entries(is_favorite);
+            CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key);
+            CREATE INDEX IF NOT EXISTS idx_media_entry_date ON media_files(entry_date);
         `;
 
-        try {
-            await this.db.execute(createTablesSQL);
-            await this.migrateThumbnailColumn();
-        } catch (error) {
-            console.error('Error creating tables:', error);
-        }
+        await this.db.execute(sql);
     }
 
-    async migrateThumbnailColumn() {
+    /**
+     * Ejecuta migraciones de base de datos
+     * @private
+     */
+    async _runMigrations() {
         if (!this.db) return;
 
         try {
-            const result = await this.db.query('PRAGMA table_info(entries)');
-            const columns = result.values || [];
-            const hasThumbColumn = columns.some(col => col.name === 'thumbnail_path');
+            // Migración para añadir columnas faltantes
+            const tableInfo = await this.db.query('PRAGMA table_info(entries)');
+            const columns = new Set((tableInfo.values || []).map(col => col.name));
 
-            if (!hasThumbColumn) {
-                console.log('Adding thumbnail_path column to entries table...');
-                await this.db.execute('ALTER TABLE entries ADD COLUMN thumbnail_path TEXT');
-                console.log('thumbnail_path column added successfully');
+            const requiredColumns = [
+                { name: 'thumbnail_path', type: 'TEXT' },
+                { name: 'tags', type: 'TEXT' },
+                { name: 'weather', type: 'TEXT' },
+                { name: 'location', type: 'TEXT' },
+                { name: 'is_favorite', type: 'BOOLEAN DEFAULT 0' }
+            ];
+
+            for (const column of requiredColumns) {
+                if (!columns.has(column.name)) {
+                    console.log(`Adding column ${column.name} to entries table...`);
+                    await this.db.execute(`ALTER TABLE entries ADD COLUMN ${column.name} ${column.type}`);
+                }
             }
         } catch (error) {
-            console.error('Error migrating thumbnail column:', error);
+            console.error('Migration error:', error);
         }
     }
 
-    async saveEntry(date, content, mood = null, photoPath = null, thumbnailPath = null) {
-        const wordCount = this.countWords(content);
+    /**
+     * Guarda o actualiza una entrada
+     * @param {string} date - Fecha en formato YYYY-MM-DD
+     * @param {string} content - Contenido de la entrada
+     * @param {string|null} mood - Estado de ánimo
+     * @param {string|null} photoPath - Ruta de la foto
+     * @param {string|null} thumbnailPath - Ruta del thumbnail
+     * @param {Object} options - Opciones adicionales
+     * @returns {Promise<{success: boolean, error?: Error}>}
+     */
+    async saveEntry(date, content, mood = null, photoPath = null, thumbnailPath = null, options = {}) {
+        await this._ensureInitialized();
+        
+        if (!this._isValidDate(date)) {
+            throw new Error(`Invalid date format: ${date}. Expected YYYY-MM-DD`);
+        }
 
-        if (this.db) {
-            // SQLite version
-            try {
-                const sql = `
-                    INSERT INTO entries (date, content, mood, photo_path, thumbnail_path, word_count, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                    ON CONFLICT(date) DO UPDATE SET
-                        content = excluded.content,
-                        mood = excluded.mood,
-                        photo_path = excluded.photo_path,
-                        thumbnail_path = excluded.thumbnail_path,
-                        word_count = excluded.word_count,
-                        updated_at = CURRENT_TIMESTAMP
-                `;
+        const wordCount = this._countWords(content);
+        const { tags, weather, location, isFavorite } = options;
 
-                await this.db.run(sql, [date, content, mood, photoPath, thumbnailPath, wordCount]);
-                return { success: true };
-            } catch (error) {
-                console.error('Error saving entry:', error);
-                return { success: false, error };
+        try {
+            if (this.db) {
+                return await this._saveSQLiteEntry(date, content, mood, photoPath, thumbnailPath, wordCount, options);
+            } else {
+                return await this._saveLocalStorageEntry(date, content, mood, photoPath, thumbnailPath, wordCount, options);
             }
-        } else {
-            // localStorage fallback
-            try {
-                const entries = this.getStoredEntries();
-                entries[date] = {
-                    content,
-                    mood,
-                    photoPath,
-                    thumbnailPath,
-                    wordCount,
-                    updatedAt: new Date().toISOString()
-                };
-                localStorage.setItem('journal_entries', JSON.stringify(entries));
-                return { success: true };
-            } catch (error) {
-                console.error('Error saving to localStorage:', error);
-                return { success: false, error };
-            }
+        } catch (error) {
+            console.error('Error saving entry:', error);
+            return { success: false, error };
+        } finally {
+            // Limpiar cache
+            this._clearCacheForEntry(date);
         }
     }
 
+    /**
+     * Guarda entrada en SQLite
+     * @private
+     */
+    async _saveSQLiteEntry(date, content, mood, photoPath, thumbnailPath, wordCount, options) {
+        const sql = `
+            INSERT INTO entries (date, content, mood, photo_path, thumbnail_path, word_count, tags, weather, location, is_favorite, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(date) DO UPDATE SET
+                content = excluded.content,
+                mood = excluded.mood,
+                photo_path = excluded.photo_path,
+                thumbnail_path = excluded.thumbnail_path,
+                word_count = excluded.word_count,
+                tags = excluded.tags,
+                weather = excluded.weather,
+                location = excluded.location,
+                is_favorite = excluded.is_favorite,
+                updated_at = CURRENT_TIMESTAMP
+        `;
+
+        const params = [
+            date, 
+            content, 
+            mood, 
+            photoPath, 
+            thumbnailPath, 
+            wordCount,
+            options.tags ? JSON.stringify(options.tags) : null,
+            options.weather,
+            options.location,
+            options.isFavorite ? 1 : 0
+        ];
+
+        await this.db.run(sql, params);
+        return { success: true };
+    }
+
+    /**
+     * Guarda entrada en localStorage
+     * @private
+     */
+    async _saveLocalStorageEntry(date, content, mood, photoPath, thumbnailPath, wordCount, options) {
+        const entries = this._getStoredEntries();
+        entries[date] = {
+            content,
+            mood,
+            photoPath,
+            thumbnailPath,
+            wordCount,
+            tags: options.tags,
+            weather: options.weather,
+            location: options.location,
+            isFavorite: options.isFavorite || false,
+            updatedAt: new Date().toISOString()
+        };
+        
+        this._setStoredEntries(entries);
+        return { success: true };
+    }
+
+    /**
+     * Obtiene una entrada por fecha
+     * @param {string} date - Fecha en formato YYYY-MM-DD
+     * @returns {Promise<Object|null>}
+     */
     async getEntry(date) {
-        if (this.db) {
-            // SQLite version
-            try {
-                const result = await this.db.query(
-                    'SELECT * FROM entries WHERE date = ?',
-                    [date]
-                );
-                return result.values && result.values.length > 0 ? result.values[0] : null;
-            } catch (error) {
-                console.error('Error getting entry:', error);
-                return null;
+        await this._ensureInitialized();
+        
+        if (!this._isValidDate(date)) {
+            throw new Error(`Invalid date format: ${date}`);
+        }
+
+        const cached = this._getCachedEntry(date);
+        if (cached) return cached;
+
+        try {
+            let entry;
+            if (this.db) {
+                const result = await this.db.query('SELECT * FROM entries WHERE date = ?', [date]);
+                entry = result.values?.[0] || null;
+                
+                if (entry?.tags) {
+                    try {
+                        entry.tags = JSON.parse(entry.tags);
+                    } catch {
+                        entry.tags = [];
+                    }
+                }
+            } else {
+                const entries = this._getStoredEntries();
+                entry = entries[date] || null;
             }
-        } else {
-            // localStorage fallback
-            const entries = this.getStoredEntries();
-            return entries[date] || null;
+
+            if (entry) {
+                this._setCachedEntry(date, entry);
+            }
+
+            return entry;
+        } catch (error) {
+            console.error('Error getting entry:', error);
+            return null;
         }
     }
 
+    /**
+     * Obtiene todas las entradas con paginación
+     * @param {number} limit - Límite de resultados
+     * @param {number} offset - Offset para paginación
+     * @returns {Promise<Array>}
+     */
     async getAllEntries(limit = 50, offset = 0) {
-        if (this.db) {
-            // SQLite version
-            try {
+        await this._ensureInitialized();
+
+        try {
+            if (this.db) {
                 const result = await this.db.query(
                     'SELECT * FROM entries ORDER BY date DESC LIMIT ? OFFSET ?',
                     [limit, offset]
                 );
-                return result.values || [];
-            } catch (error) {
-                console.error('Error getting all entries:', error);
-                return [];
+                return this._processEntriesResult(result.values || []);
+            } else {
+                const entries = this._getStoredEntries();
+                return Object.keys(entries)
+                    .map(date => ({ date, ...entries[date] }))
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .slice(offset, offset + limit);
             }
-        } else {
-            // localStorage fallback
-            const entries = this.getStoredEntries();
-            const entriesArray = Object.keys(entries)
-                .map(date => ({ date, ...entries[date] }))
-                .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .slice(offset, offset + limit);
-            return entriesArray;
+        } catch (error) {
+            console.error('Error getting all entries:', error);
+            return [];
         }
     }
 
-    async searchEntries(query) {
-        if (this.db) {
-            try {
-                const result = await this.db.query(
-                    'SELECT * FROM entries WHERE content LIKE ? ORDER BY date DESC',
-                    [`%${query}%`]
-                );
-                return result.values || [];
-            } catch (error) {
-                console.error('Error searching entries:', error);
-                return [];
-            }
-        } else {
-            const entries = this.getStoredEntries();
-            const filteredEntries = Object.keys(entries)
-                .filter(date =>
-                    entries[date].content.toLowerCase().includes(query.toLowerCase())
-                )
-                .map(date => ({ date, ...entries[date] }))
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
-            return filteredEntries;
-        }
-    }
+    /**
+     * Busca entradas por contenido
+     * @param {string} query - Término de búsqueda
+     * @param {Object} filters - Filtros adicionales
+     * @returns {Promise<Array>}
+     */
+    async searchEntries(query, filters = {}) {
+        await this._ensureInitialized();
 
-    async getEntriesForMonth(year, month) {
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+        if (!query?.trim()) return [];
 
-        if (this.db) {
-            try {
-                const result = await this.db.query(
-                    'SELECT date, mood FROM entries WHERE date >= ? AND date <= ?',
-                    [startDate, endDate]
-                );
-                return result.values || [];
-            } catch (error) {
-                console.error('Error getting month entries:', error);
-                return [];
-            }
-        } else {
-            const entries = this.getStoredEntries();
-            return Object.keys(entries)
-                .filter(date => date >= startDate && date <= endDate)
-                .map(date => ({ date, mood: entries[date].mood }));
-        }
-    }
-
-    async deleteEntry(date) {
-        if (this.db) {
-            try {
-                await this.db.run('DELETE FROM entries WHERE date = ?', [date]);
-                return { success: true };
-            } catch (error) {
-                console.error('Error deleting entry:', error);
-                return { success: false, error };
-            }
-        } else {
-            try {
-                const entries = this.getStoredEntries();
-                delete entries[date];
-                localStorage.setItem('journal_entries', JSON.stringify(entries));
-                return { success: true };
-            } catch (error) {
-                console.error('Error deleting from localStorage:', error);
-                return { success: false, error };
-            }
-        }
-    }
-
-    async getSetting(key, defaultValue = null) {
-        if (this.db) {
-            try {
-                const result = await this.db.query(
-                    'SELECT value FROM settings WHERE key = ?',
-                    [key]
-                );
-                return result.values && result.values.length > 0
-                    ? result.values[0].value
-                    : defaultValue;
-            } catch (error) {
-                console.error('Error getting setting:', error);
-                return defaultValue;
-            }
-        } else {
-            return localStorage.getItem(`journal_setting_${key}`) || defaultValue;
-        }
-    }
-
-    async setSetting(key, value) {
-        if (this.db) {
-            try {
-                await this.db.run(
-                    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
-                    [key, value]
-                );
-                return { success: true };
-            } catch (error) {
-                console.error('Error setting value:', error);
-                return { success: false, error };
-            }
-        } else {
-            try {
-                localStorage.setItem(`journal_setting_${key}`, value);
-                return { success: true };
-            } catch (error) {
-                console.error('Error setting localStorage value:', error);
-                return { success: false, error };
-            }
-        }
-    }
-
-    getStoredEntries() {
         try {
-            const entries = localStorage.getItem('journal_entries');
-            if (!entries) return {};
+            if (this.db) {
+                return await this._searchSQLiteEntries(query, filters);
+            } else {
+                return await this._searchLocalStorageEntries(query, filters);
+            }
+        } catch (error) {
+            console.error('Error searching entries:', error);
+            return [];
+        }
+    }
 
-            const parsed = JSON.parse(entries);
-            if (typeof parsed !== 'object' || parsed === null) {
-                console.warn('Invalid entries format in localStorage, resetting...');
-                localStorage.setItem('journal_entries', '{}');
-                return {};
+    /**
+     * Busca en SQLite
+     * @private
+     */
+    async _searchSQLiteEntries(query, filters) {
+        let sql = 'SELECT * FROM entries WHERE content LIKE ?';
+        const params = [`%${query}%`];
+
+        if (filters.mood) {
+            sql += ' AND mood = ?';
+            params.push(filters.mood);
+        }
+
+        if (filters.isFavorite) {
+            sql += ' AND is_favorite = 1';
+        }
+
+        if (filters.dateFrom) {
+            sql += ' AND date >= ?';
+            params.push(filters.dateFrom);
+        }
+
+        if (filters.dateTo) {
+            sql += ' AND date <= ?';
+            params.push(filters.dateTo);
+        }
+
+        sql += ' ORDER BY date DESC';
+
+        const result = await this.db.query(sql, params);
+        return this._processEntriesResult(result.values || []);
+    }
+
+    /**
+     * Busca en localStorage
+     * @private
+     */
+    async _searchLocalStorageEntries(query, filters) {
+        const entries = this._getStoredEntries();
+        const lowerQuery = query.toLowerCase();
+
+        return Object.keys(entries)
+            .filter(date => {
+                const entry = entries[date];
+                
+                if (!entry.content?.toLowerCase().includes(lowerQuery)) return false;
+                
+                if (filters.mood && entry.mood !== filters.mood) return false;
+                if (filters.isFavorite && !entry.isFavorite) return false;
+                if (filters.dateFrom && date < filters.dateFrom) return false;
+                if (filters.dateTo && date > filters.dateTo) return false;
+                
+                return true;
+            })
+            .map(date => ({ date, ...entries[date] }))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    /**
+     * Elimina una entrada
+     * @param {string} date - Fecha de la entrada a eliminar
+     * @returns {Promise<{success: boolean, error?: Error}>}
+     */
+    async deleteEntry(date) {
+        await this._ensureInitialized();
+
+        try {
+            if (this.db) {
+                await this.db.run('DELETE FROM entries WHERE date = ?', [date]);
+            } else {
+                const entries = this._getStoredEntries();
+                delete entries[date];
+                this._setStoredEntries(entries);
             }
 
-            return parsed;
+            this._clearCacheForEntry(date);
+            return { success: true };
+        } catch (error) {
+            console.error('Error deleting entry:', error);
+            return { success: false, error };
+        }
+    }
+
+    /**
+     * Obtiene estadísticas del diario
+     * @returns {Promise<Object>}
+     */
+    async getStats() {
+        await this._ensureInitialized();
+
+        try {
+            if (this.db) {
+                const [totalResult, wordsResult] = await Promise.all([
+                    this.db.query('SELECT COUNT(*) as total FROM entries'),
+                    this.db.query('SELECT SUM(word_count) as total_words FROM entries')
+                ]);
+
+                return {
+                    totalEntries: totalResult.values[0].total,
+                    totalWords: wordsResult.values[0].total_words || 0,
+                    currentStreak: await this._getCurrentStreak()
+                };
+            } else {
+                const entries = this._getStoredEntries();
+                const entriesArray = Object.values(entries);
+                
+                return {
+                    totalEntries: entriesArray.length,
+                    totalWords: entriesArray.reduce((sum, entry) => sum + (entry.wordCount || 0), 0),
+                    currentStreak: await this._getCurrentStreak()
+                };
+            }
+        } catch (error) {
+            console.error('Error getting stats:', error);
+            return { totalEntries: 0, totalWords: 0, currentStreak: 0 };
+        }
+    }
+
+    // =================== CONFIG METHODS ===================
+
+    /**
+     * Obtiene una configuración
+     * @param {string} key - Clave de la configuración
+     * @param {*} defaultValue - Valor por defecto
+     * @returns {Promise<*>}
+     */
+    async getSetting(key, defaultValue = null) {
+        await this._ensureInitialized();
+
+        // Verificar cache
+        const cached = this._getCachedSetting(key);
+        if (cached !== null) return cached;
+
+        try {
+            let value;
+            if (this.db) {
+                const result = await this.db.query('SELECT value FROM settings WHERE key = ?', [key]);
+                value = result.values?.[0]?.value || defaultValue;
+            } else {
+                value = localStorage.getItem(`${DatabaseManager.STORAGE_PREFIX}setting_${key}`) || defaultValue;
+            }
+
+            // Cachear valor
+            this._setCachedSetting(key, value);
+            return value;
+        } catch (error) {
+            console.error('Error getting setting:', error);
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Establece una configuración
+     * @param {string} key - Clave de la configuración
+     * @param {*} value - Valor a establecer
+     * @returns {Promise<{success: boolean, error?: Error}>}
+     */
+    async setSetting(key, value) {
+        await this._ensureInitialized();
+
+        if (!DatabaseManager.ALLOWED_SETTINGS.includes(key)) {
+            throw new Error(`Setting key '${key}' is not allowed`);
+        }
+
+        try {
+            const stringValue = String(value);
+
+            if (this.db) {
+                await this.db.run(
+                    'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+                    [key, stringValue]
+                );
+            } else {
+                localStorage.setItem(`${DatabaseManager.STORAGE_PREFIX}setting_${key}`, stringValue);
+            }
+
+            // Actualizar cache
+            this._setCachedSetting(key, stringValue);
+            return { success: true };
+        } catch (error) {
+            console.error('Error setting value:', error);
+            return { success: false, error };
+        }
+    }
+
+    // =================== UTILITY METHODS ===================
+
+    /**
+     * Processes entry results to parse JSON
+     * @private
+     */
+    _processEntriesResult(entries) {
+        return entries.map(entry => {
+            if (entry.tags) {
+                try {
+                    entry.tags = JSON.parse(entry.tags);
+                } catch {
+                    entry.tags = [];
+                }
+            }
+            return entry;
+        });
+    }
+
+    /**
+     * Obtiene entradas almacenadas en localStorage
+     * @private
+     */
+    _getStoredEntries() {
+        try {
+            const entries = localStorage.getItem(`${DatabaseManager.STORAGE_PREFIX}entries`);
+            if (!entries) return {};
+            
+            const parsed = JSON.parse(entries);
+            return typeof parsed === 'object' && parsed !== null ? parsed : {};
         } catch (error) {
             console.error('Error parsing stored entries:', error);
-            // Try to recover by clearing corrupted data
-            try {
-                localStorage.removeItem('journal_entries');
-                localStorage.setItem('journal_entries', '{}');
-            } catch (storageError) {
-                console.error('localStorage is not available:', storageError);
-            }
+            this._resetStoredEntries();
             return {};
         }
     }
 
-    countWords(text) {
-        if (!text || text.trim() === '') return 0;
-        return text.trim().split(/\s+/).length;
-    }
-
-    formatDate(date) {
-        return date.toISOString().split('T')[0];
-    }
-
-    async getStats() {
-        if (this.db) {
-            try {
-                const totalResult = await this.db.query('SELECT COUNT(*) as total FROM entries');
-                const totalEntries = totalResult.values[0].total;
-
-                const wordsResult = await this.db.query('SELECT SUM(word_count) as total_words FROM entries');
-                const totalWords = wordsResult.values[0].total_words || 0;
-
-                const streakResult = await this.getCurrentStreak();
-
-                return {
-                    totalEntries,
-                    totalWords,
-                    currentStreak: streakResult
-                };
-            } catch (error) {
-                console.error('Error getting stats:', error);
-                return { totalEntries: 0, totalWords: 0, currentStreak: 0 };
-            }
-        } else {
-            const entries = this.getStoredEntries();
-            const entriesArray = Object.values(entries);
-            const totalEntries = entriesArray.length;
-            const totalWords = entriesArray.reduce((sum, entry) => sum + (entry.wordCount || 0), 0);
-            const currentStreak = await this.getCurrentStreak();
-
-            return { totalEntries, totalWords, currentStreak };
+    /**
+     * Establece entradas en localStorage
+     * @private
+     */
+    _setStoredEntries(entries) {
+        try {
+            localStorage.setItem(`${DatabaseManager.STORAGE_PREFIX}entries`, JSON.stringify(entries));
+        } catch (error) {
+            console.error('Error setting stored entries:', error);
+            throw new Error('Storage quota exceeded or localStorage unavailable');
         }
     }
 
-    async getCurrentStreak() {
+    /**
+     * Resetea entradas almacenadas
+     * @private
+     */
+    _resetStoredEntries() {
+        try {
+            localStorage.setItem(`${DatabaseManager.STORAGE_PREFIX}entries`, '{}');
+        } catch (error) {
+            console.error('Error resetting stored entries:', error);
+        }
+    }
+
+    /**
+     * Cuenta palabras en un texto
+     * @private
+     */
+    _countWords(text) {
+        if (!text?.trim()) return 0;
+        return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+    }
+
+    /**
+     * Valida formato de fecha
+     * @private
+     */
+    _isValidDate(date) {
+        return typeof date === 'string' && DatabaseManager.DATE_REGEX.test(date);
+    }
+
+    /**
+     * Formatea fecha
+     * @private
+     */
+    _formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    /**
+     * Verifica si localStorage está disponible
+     * @private
+     */
+    _isLocalStorageAvailable() {
+        try {
+            const test = '__localStorage_test__';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Asegura que la base de datos esté inicializada
+     * @private
+     */
+    async _ensureInitialized() {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+    }
+
+    /**
+     * Calcula la racha actual
+     * @private
+     */
+    async _getCurrentStreak() {
         const today = new Date();
         let streak = 0;
         let currentDate = new Date(today);
 
         while (true) {
-            const dateStr = this.formatDate(currentDate);
+            const dateStr = this._formatDate(currentDate);
             const entry = await this.getEntry(dateStr);
-
-            if (entry && entry.content && entry.content.trim().length > 0) {
+            
+            if (entry?.content?.trim()) {
                 streak++;
                 currentDate.setDate(currentDate.getDate() - 1);
             } else {
@@ -381,75 +692,110 @@ class DatabaseManager {
         return streak;
     }
 
-    async exportData() {
-        try {
-            const entries = await this.getAllEntries(1000);
-            const settings = {};
+    // =================== CACHE METHODS ===================
 
-            // Get all settings
-            const settingKeys = ['darkMode', 'notificationsEnabled', 'notificationTime'];
-            for (const key of settingKeys) {
-                settings[key] = await this.getSetting(key);
-            }
+    _getCachedEntry(date) {
+        const cached = this.entryCache.get(date);
+        if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
+            return cached.data;
+        }
+        return null;
+    }
+
+    _setCachedEntry(date, entry) {
+        this.entryCache.set(date, {
+            data: entry,
+            timestamp: Date.now()
+        });
+    }
+
+    _clearCacheForEntry(date) {
+        this.entryCache.delete(date);
+    }
+
+    _getCachedSetting(key) {
+        const cached = this.settingsCache.get(key);
+        if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
+            return cached.data;
+        }
+        return null;
+    }
+
+    _setCachedSetting(key, value) {
+        this.settingsCache.set(key, {
+            data: value,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Limpia todos los caches
+     */
+    clearCache() {
+        this.entryCache.clear();
+        this.settingsCache.clear();
+    }
+
+    // =================== EXPORT/IMPORT METHODS ===================
+
+    /**
+     * Exporta todos los datos
+     * @returns {Promise<Object>}
+     */
+    async exportData() {
+        await this._ensureInitialized();
+
+        try {
+            const [entries, settings] = await Promise.all([
+                this.getAllEntries(10000), // Exportar hasta 10k entradas
+                this._getAllSettings()
+            ]);
 
             return {
                 entries,
                 settings,
                 exportDate: new Date().toISOString(),
-                version: '1.0'
+                version: '1.1',
+                platform: this.platform
             };
         } catch (error) {
             console.error('Error exporting data:', error);
-            throw error;
+            throw new Error(`Export failed: ${error.message}`);
         }
     }
 
+    /**
+     * Obtiene todas las configuraciones
+     * @private
+     */
+    async _getAllSettings() {
+        const settings = {};
+        
+        for (const key of DatabaseManager.ALLOWED_SETTINGS) {
+            const value = await this.getSetting(key);
+            if (value !== null) {
+                settings[key] = value;
+            }
+        }
+        
+        return settings;
+    }
+
+    /**
+     * Importa datos
+     * @param {Object} data - Datos a importar
+     * @returns {Promise<Object>}
+     */
     async importData(data) {
+        await this._ensureInitialized();
+
         try {
-            if (!data || typeof data !== 'object') {
-                throw new Error('Formato de datos inválido: debe ser un objeto');
-            }
-
-            if (!data.entries || !Array.isArray(data.entries)) {
-                throw new Error('Formato de datos inválido: se requiere un array de entradas');
-            }
-
-            // Validate version compatibility
-            if (data.version && typeof data.version === 'string') {
-                const version = parseFloat(data.version);
-                if (version > 1.0) {
-                    throw new Error(`Versión no compatible: ${data.version}. Versión máxima soportada: 1.0`);
-                }
-            }
-
-            // Validate each entry
-            for (let i = 0; i < data.entries.length; i++) {
-                const entry = data.entries[i];
-                if (!entry || typeof entry !== 'object') {
-                    throw new Error(`Entrada inválida en posición ${i}: debe ser un objeto`);
-                }
-
-                if (!entry.date || typeof entry.date !== 'string') {
-                    throw new Error(`Entrada inválida en posición ${i}: fecha requerida`);
-                }
-
-                // Validate date format (YYYY-MM-DD)
-                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-                if (!dateRegex.test(entry.date)) {
-                    throw new Error(`Entrada inválida en posición ${i}: formato de fecha inválido (${entry.date})`);
-                }
-
-                if (entry.content && typeof entry.content !== 'string') {
-                    throw new Error(`Entrada inválida en posición ${i}: el contenido debe ser texto`);
-                }
-
-                if (entry.mood && typeof entry.mood !== 'string') {
-                    throw new Error(`Entrada inválida en posición ${i}: el estado de ánimo debe ser texto`);
-                }
-            }
+            this._validateImportData(data);
 
             let importedCount = 0;
             let skippedCount = 0;
+
+            // Importar entradas
             for (const entry of data.entries) {
                 try {
                     await this.saveEntry(
@@ -457,7 +803,13 @@ class DatabaseManager {
                         entry.content || '',
                         entry.mood || null,
                         entry.photo_path || entry.photoPath || null,
-                        entry.thumbnail_path || entry.thumbnailPath || null
+                        entry.thumbnail_path || entry.thumbnailPath || null,
+                        {
+                            tags: entry.tags,
+                            weather: entry.weather,
+                            location: entry.location,
+                            isFavorite: entry.is_favorite || entry.isFavorite || false
+                        }
                     );
                     importedCount++;
                 } catch (entryError) {
@@ -465,19 +817,11 @@ class DatabaseManager {
                     skippedCount++;
                 }
             }
-
-            if (data.settings && typeof data.settings === 'object') {
-                const allowedSettings = ['darkMode', 'notificationsEnabled', 'notificationTime'];
-                for (const [key, value] of Object.entries(data.settings)) {
-                    if (allowedSettings.includes(key) && value !== null && value !== undefined) {
-                        try {
-                            await this.setSetting(key, String(value));
-                        } catch (settingError) {
-                            console.warn(`Error importing setting ${key}:`, settingError);
-                        }
-                    }
-                }
+            if (data.settings) {
+                await this._importSettings(data.settings);
             }
+
+            this.clearCache();
 
             return {
                 success: true,
@@ -489,11 +833,74 @@ class DatabaseManager {
             console.error('Error importing data:', error);
             return {
                 success: false,
-                error: error.message || 'Error desconocido durante la importación'
+                error: error.message
             };
         }
+    }
+
+    /**
+     * Valida datos de importación
+     * @private
+     */
+    _validateImportData(data) {
+        if (!data || typeof data !== 'object') {
+            throw new Error('Invalid data format: must be an object');
+        }
+        if (!Array.isArray(data.entries)) {
+            throw new Error('Invalid data format: entries must be an array');
+        }
+        if (data.version) {
+            const version = parseFloat(data.version);
+            if (version > 1.1) {
+                throw new Error(`Unsupported version: ${data.version}`);
+            }
+        }
+        
+        data.entries.forEach((entry, index) => {
+            if (!entry || typeof entry !== 'object') {
+                throw new Error(`Invalid entry at position ${index}`);
+            }
+
+            if (!this._isValidDate(entry.date)) {
+                throw new Error(`Invalid date format at position ${index}: ${entry.date}`);
+            }
+        });
+    }
+
+    /**
+     * Importa configuraciones
+     * @private
+     */
+    async _importSettings(settings) {
+        for (const [key, value] of Object.entries(settings)) {
+            if (DatabaseManager.ALLOWED_SETTINGS.includes(key) && value != null) {
+                try {
+                    await this.setSetting(key, value);
+                } catch (error) {
+                    console.warn(`Error importing setting ${key}:`, error);
+                }
+            }
+        }
+    }
+
+    /**
+     * Cierra la conexión de base de datos
+     */
+    async close() {
+        if (this.db) {
+            try {
+                await this.db.close();
+                this.db = null;
+            } catch (error) {
+                console.error('Error closing database:', error);
+            }
+        }
+        
+        this.clearCache();
+        this.isInitialized = false;
     }
 }
 
 const db = new DatabaseManager();
+
 export default db;
