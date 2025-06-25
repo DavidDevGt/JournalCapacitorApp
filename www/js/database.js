@@ -18,7 +18,7 @@ class DatabaseManager {
         this.db = null;
         this.isInitialized = false;
         this.platform = Capacitor.getPlatform();
-        this.isWeb = this.platform === 'web';        
+        this.isWeb = this.platform === 'web';
         this.entryCache = new Map();
         this.settingsCache = new Map();
         this.cacheExpiry = 5 * 60 * 1000; // 5 minutos
@@ -71,9 +71,9 @@ class DatabaseManager {
      */
     async _initSQLite() {
         await this.sqlite.checkConnectionsConsistency();
-        
+
         const isConnected = await this.sqlite.isConnection(DatabaseManager.DB_NAME, false);
-        
+
         if (!isConnected.result) {
             this.db = await this.sqlite.createConnection(
                 DatabaseManager.DB_NAME,
@@ -191,7 +191,7 @@ class DatabaseManager {
      */
     async saveEntry(date, content, mood = null, photoPath = null, thumbnailPath = null, options = {}) {
         await this._ensureInitialized();
-        
+
         if (!this._isValidDate(date)) {
             throw new Error(`Invalid date format: ${date}. Expected YYYY-MM-DD`);
         }
@@ -236,11 +236,11 @@ class DatabaseManager {
         `;
 
         const params = [
-            date, 
-            content, 
-            mood, 
-            photoPath, 
-            thumbnailPath, 
+            date,
+            content,
+            mood,
+            photoPath,
+            thumbnailPath,
             wordCount,
             options.tags ? JSON.stringify(options.tags) : null,
             options.weather,
@@ -270,7 +270,7 @@ class DatabaseManager {
             isFavorite: options.isFavorite || false,
             updatedAt: new Date().toISOString()
         };
-        
+
         this._setStoredEntries(entries);
         return { success: true };
     }
@@ -282,7 +282,7 @@ class DatabaseManager {
      */
     async getEntry(date) {
         await this._ensureInitialized();
-        
+
         if (!this._isValidDate(date)) {
             throw new Error(`Invalid date format: ${date}`);
         }
@@ -295,7 +295,7 @@ class DatabaseManager {
             if (this.db) {
                 const result = await this.db.query('SELECT * FROM entries WHERE date = ?', [date]);
                 entry = result.values?.[0] || null;
-                
+
                 if (entry?.tags) {
                     try {
                         entry.tags = JSON.parse(entry.tags);
@@ -372,6 +372,42 @@ class DatabaseManager {
     }
 
     /**
+     * Obtiene todas las entradas de un mes específico
+     * @param {number} year - Año (ej: 2024)
+     * @param {number} month - Mes (1-12)
+     * @returns {Promise<Array>}
+     */
+    async getEntriesForMonth(year, month) {
+        await this._ensureInitialized();
+
+        if (!year || !month || month < 1 || month > 12) {
+            throw new Error('Invalid year or month parameters');
+        }
+
+        try {
+            const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+            const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+
+            if (this.db) {
+                const result = await this.db.query(
+                    'SELECT * FROM entries WHERE date >= ? AND date <= ? ORDER BY date ASC',
+                    [startDate, endDate]
+                );
+                return this._processEntriesResult(result.values || []);
+            } else {
+                const entries = this._getStoredEntries();
+                return Object.keys(entries)
+                    .filter(date => date >= startDate && date <= endDate)
+                    .map(date => ({ date, ...entries[date] }))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+        } catch (error) {
+            console.error('Error getting entries for month:', error);
+            return [];
+        }
+    }
+
+    /**
      * Busca en SQLite
      * @private
      */
@@ -415,14 +451,14 @@ class DatabaseManager {
         return Object.keys(entries)
             .filter(date => {
                 const entry = entries[date];
-                
+
                 if (!entry.content?.toLowerCase().includes(lowerQuery)) return false;
-                
+
                 if (filters.mood && entry.mood !== filters.mood) return false;
                 if (filters.isFavorite && !entry.isFavorite) return false;
                 if (filters.dateFrom && date < filters.dateFrom) return false;
                 if (filters.dateTo && date > filters.dateTo) return false;
-                
+
                 return true;
             })
             .map(date => ({ date, ...entries[date] }))
@@ -476,7 +512,7 @@ class DatabaseManager {
             } else {
                 const entries = this._getStoredEntries();
                 const entriesArray = Object.values(entries);
-                
+
                 return {
                     totalEntries: entriesArray.length,
                     totalWords: entriesArray.reduce((sum, entry) => sum + (entry.wordCount || 0), 0),
@@ -583,7 +619,7 @@ class DatabaseManager {
         try {
             const entries = localStorage.getItem(`${DatabaseManager.STORAGE_PREFIX}entries`);
             if (!entries) return {};
-            
+
             const parsed = JSON.parse(entries);
             return typeof parsed === 'object' && parsed !== null ? parsed : {};
         } catch (error) {
@@ -680,7 +716,7 @@ class DatabaseManager {
         while (true) {
             const dateStr = this._formatDate(currentDate);
             const entry = await this.getEntry(dateStr);
-            
+
             if (entry?.content?.trim()) {
                 streak++;
                 currentDate.setDate(currentDate.getDate() - 1);
@@ -770,14 +806,14 @@ class DatabaseManager {
      */
     async _getAllSettings() {
         const settings = {};
-        
+
         for (const key of DatabaseManager.ALLOWED_SETTINGS) {
             const value = await this.getSetting(key);
             if (value !== null) {
                 settings[key] = value;
             }
         }
-        
+
         return settings;
     }
 
@@ -855,7 +891,7 @@ class DatabaseManager {
                 throw new Error(`Unsupported version: ${data.version}`);
             }
         }
-        
+
         data.entries.forEach((entry, index) => {
             if (!entry || typeof entry !== 'object') {
                 throw new Error(`Invalid entry at position ${index}`);
@@ -895,7 +931,7 @@ class DatabaseManager {
                 console.error('Error closing database:', error);
             }
         }
-        
+
         this.clearCache();
         this.isInitialized = false;
     }

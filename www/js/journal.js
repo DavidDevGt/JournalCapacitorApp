@@ -23,7 +23,9 @@ class JournalManager {
         this.autoMoodTimeout = null;
         this.lastAnalyzedText = '';
         this.isManualMoodSelection = false;
-    } async init() {
+    }
+
+    async init() {
         this.setupElements();
         this.setupEventListeners();
         this.setupAutoSave();
@@ -80,7 +82,20 @@ class JournalManager {
         if (shareBtn) {
             shareBtn.addEventListener('click', () => this.shareEntry());
         }
-    } async selectMood(mood) {
+
+        const todayNavBtn = document.getElementById('nav-today-btn');
+        if (todayNavBtn) {
+            todayNavBtn.addEventListener('click', async () => {
+                if (window.ui && typeof window.ui.selectDate === 'function') {
+                    window.ui.selectDate(new Date());
+                } else {
+                    await this.loadTodayEntry(); // Fallback mínimo
+                }
+            });
+        }
+    }
+
+    async selectMood(mood) {
         try {
             await this.triggerHapticFeedback('medium');
 
@@ -471,6 +486,7 @@ class JournalManager {
     }
 
     async loadTodayEntry() {
+        console.log('🔄 Cargando entrada de hoy...');
         if (!window.db || !window.db.isInitialized) return;
 
         try {
