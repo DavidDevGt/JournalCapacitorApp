@@ -25,13 +25,6 @@ export const debounce = (fn, ms = 0) => {
     }
 }
 
-export const formatFileSize = bytes => {
-    if (!bytes) return '0 Bytes'
-    const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`
-}
-
 export const sanitizeHTML = str => {
     const temp = document.createElement('div');
     temp.textContent = str;
@@ -85,12 +78,6 @@ export const createMenuItemHTML = (icon, text, id) => `
         </div>
     </button>
 `;
-
-export const addEventListenerWithCleanup = (element, event, handler) => {
-    element.addEventListener(event, handler);
-    element._cleanup = element._cleanup || [];
-    element._cleanup.push(() => element.removeEventListener(event, handler));
-};
 
 export const cleanupElement = (element) => {
     if (element._cleanup) {
@@ -215,20 +202,6 @@ export const createModalWithCleanup = (modalHTML, setupCallback) => {
     }
 
     return modal;
-};
-
-export const setupElementCleanup = (element, cleanupHandlers = []) => {
-    element._cleanup = element._cleanup || [];
-    element._cleanup.push(...cleanupHandlers);
-
-    const cleanupAll = () => {
-        if (element._cleanup) {
-            element._cleanup.forEach(cleanup => cleanup());
-            element._cleanup = [];
-        }
-    };
-
-    return cleanupAll;
 };
 
 export const generateMenuHTML = () => `
