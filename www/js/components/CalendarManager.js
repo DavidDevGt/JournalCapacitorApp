@@ -2,6 +2,7 @@ export class CalendarManager {
     constructor(uiManager) {
         this.ui = uiManager;
         this.currentMonth = new Date();
+        this.navigationSetup = false;
     }
 
     setup() {
@@ -9,6 +10,8 @@ export class CalendarManager {
     }
 
     setupNavigation() {
+        if (this.navigationSetup) return;
+        this.navigationSetup = true;
         const prevBtn = document.getElementById('prev-month');
         const nextBtn = document.getElementById('next-month');
 
