@@ -178,85 +178,97 @@ class UIManager {
         }
     }
 
-    createEntryCard(entry) {
-        const date = new Date(entry.date);
-        const formattedDate = this.formatDate(date, 'short');
-        const preview = entry.content.substring(0, 180) + (entry.content.length > 180 ? '...' : '');
-        const moodDisplay = entry.mood ? `<div class="mood-indicator flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-full flex items-center justify-center shadow-sm border border-blue-100 dark:border-blue-800/50">
-            <span class="text-2xl">${entry.mood}</span>
-        </div>` : '';
-        const photoPath = entry.photo_path || entry.photoPath;
-        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;
-        
-        const photoDisplay = thumbnailPath ?
-            `<div class="entry-photo-card relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-300 group cursor-pointer">
-                <img src="${thumbnailPath}" 
-                     alt="Foto de la entrada" 
-                     class="w-20 h-20 object-cover opacity-0 transition-all duration-500 group-hover:scale-105" 
-                     loading="lazy"
-                     onload="this.style.opacity='1'"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                <div class="w-20 h-20 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600" style="display:none;">
-                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                    </svg>
-                </div>
-                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-xl"></div>
-            </div>` : '';
-        return `
-            <div class="entry-card-material group relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-lg dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-1" onclick="ui.selectDate(new Date('${entry.date}'))">
-                <!-- Material Design accent line -->
-                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                
-                <!-- Card content -->
-                <div class="relative p-6">
-                    <!-- Header with date and metadata -->
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="flex-1 min-w-0">
-                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">${formattedDate}</h3>
-                            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4">
-                                <div class="flex items-center space-x-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    <span>${entry.word_count || entry.wordCount || 0} palabras</span>
-                                </div>
-                                ${entry.content.length > 180 ? `
-                                <div class="flex items-center space-x-1 text-blue-600 dark:text-blue-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                    </svg>
-                                    <span class="font-medium">Leer más</span>
-                                </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                        
-                        <!-- Mood and photo section -->
-                        <div class="flex items-center space-x-3 ml-4">
-                            ${moodDisplay}
-                            ${photoDisplay ? `<div onclick="event.stopPropagation(); ui.showImagePreview('${photoPath || thumbnailPath}')">${photoDisplay}</div>` : ''}
-                        </div>
-                    </div>
-                    <!-- Content preview -->
-                    <div class="relative">
-                        <p class="text-gray-700 dark:text-gray-300 leading-relaxed text-base line-clamp-3">
-                            ${preview}
-                        </p>
-                        ${entry.content.length > 180 ? `
-                        <div class="absolute bottom-0 right-0 h-6 w-20 bg-gradient-to-l from-white dark:from-gray-800 to-transparent"></div>
-                        ` : ''}
-                    </div>
-                </div>
-                <!-- Ripple effect overlay -->
-                <div class="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-pink-500/0 group-hover:from-blue-500/5 group-hover:via-purple-500/5 group-hover:to-pink-500/5 transition-all duration-500"></div>
-                </div>
-            </div>
-        `;
-    }
+createEntryCard(entry) {
+    const date = new Date(entry.date);
+    const formattedDate = this.formatDate(date, 'short');
+    const preview = entry.content.substring(0, 180) + (entry.content.length > 180 ? '...' : '');
 
+    // Mejorar el display del mood con más variedad
+    const moodDisplay = entry.mood ? `
+    <div class="mood-indicator flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 rounded-2xl flex items-center justify-center shadow-lg border border-amber-200/60 dark:border-amber-700/60 hover:scale-110 transition-transform duration-200">
+        <span class="text-2xl filter drop-shadow-sm">${entry.mood}</span>
+    </div>` : '';
+
+    const photoPath = entry.photo_path || entry.photoPath;
+    const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;
+
+    const wordCount = entry.content ? entry.content.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
+    
+    // Mejorar el display del conteo de palabras
+    const wordCountDisplay = wordCount > 0 ? `
+    <div class="flex items-center gap-2 text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-600/40">
+        <span class="material-icons text-sm">edit_note</span>
+        <span class="text-xs font-medium">${wordCount} ${wordCount === 1 ? 'palabra' : 'palabras'}</span>
+    </div>` : `
+    <div class="flex items-center gap-2 text-slate-500 bg-slate-800/40 px-3 py-1.5 rounded-full border border-slate-600/30">
+        <span class="material-icons text-sm">article</span>
+        <span class="text-xs font-medium">Sin contenido</span>
+    </div>`;
+
+    // Agregar tiempo de lectura estimado
+    const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+    const readingTimeDisplay = wordCount > 0 ? `
+    <div class="flex items-center gap-1.5 text-slate-500">
+        <span class="material-icons text-sm">schedule</span>
+        <span class="text-xs">${readingTime} min</span>
+    </div>` : '';
+
+    // Mejorar la imagen con overlay y animación
+    const imageDisplay = thumbnailPath ? `
+    <div class="relative group/image">
+        <img src="${thumbnailPath}" alt="Foto adjunta" class="w-12 h-12 object-cover rounded-2xl border border-slate-600/70 shadow-lg transition-all duration-300 group-hover/image:scale-105" />
+        <div class="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full border-2 border-slate-800 shadow-sm">
+            <div class="absolute inset-0.5 bg-white/20 rounded-full animate-pulse"></div>
+        </div>
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-200"></div>
+    </div>` : '';
+
+    return `
+    <div class="journal-card group relative bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md rounded-3xl shadow-xl border border-slate-700/60 p-6 mb-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:border-slate-600/80 hover:from-slate-800 hover:to-slate-900 focus-within:ring-2 focus-within:ring-blue-500/60 focus-within:ring-offset-2 focus-within:ring-offset-slate-900">
+        <!-- Gradiente sutil de fondo -->
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        
+        <!-- Header con fecha y controles -->
+        <div class="relative flex items-start justify-between mb-5">
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-bold text-slate-200 bg-gradient-to-r from-slate-700/80 to-slate-600/80 px-3 py-1.5 rounded-full border border-slate-600/60 shadow-sm backdrop-blur-sm">
+                    ${formattedDate}
+                </span>
+                ${readingTimeDisplay}
+            </div>
+            <div class="flex items-center gap-3">
+                ${moodDisplay}
+                ${imageDisplay}
+                <button class="entry-menu-btn opacity-70 hover:opacity-100 focus:opacity-100 transition-all duration-200 p-2.5 rounded-2xl hover:bg-slate-700/60 focus:bg-slate-700/60 hover:scale-110 focus:scale-110 group/btn" title="Más opciones">
+                    <span class="material-icons text-lg text-slate-400 group-hover/btn:text-slate-200 transition-colors duration-200">more_vert</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Contenido principal con mejor tipografía -->
+        <div class="relative mb-6">
+            <p class="text-slate-100 leading-relaxed text-sm md:text-base line-clamp-4 group-hover:text-white transition-colors duration-300 font-light tracking-wide">
+                ${preview}
+            </p>
+            <!-- Fade gradient para el contenido cortado -->
+            <div class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-800/95 to-transparent pointer-events-none opacity-60 group-hover:opacity-40 transition-opacity duration-300"></div>
+        </div>
+        
+        <!-- Footer mejorado con mejor espaciado -->
+        <div class="relative flex items-center justify-between pt-4 border-t border-slate-700/50 group-hover:border-slate-600/60 transition-colors duration-300">
+            ${wordCountDisplay}
+            
+            <button class="entry-view-btn flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:from-blue-700 focus:to-blue-800 text-white text-xs font-bold rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 focus:scale-105 focus:ring-2 focus:ring-blue-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 group/viewbtn">
+                <span class="material-icons text-sm group-hover/viewbtn:scale-110 transition-transform duration-200">visibility</span>
+                <span>Ver entrada</span>
+            </button>
+        </div>
+        
+        <!-- Efecto de brillo sutil -->
+        <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-600/40 to-transparent"></div>
+    </div>
+`;
+}
     setupSearch() {
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
