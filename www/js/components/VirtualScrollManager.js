@@ -248,10 +248,11 @@ export class VirtualScrollManager {
 
         // Pointer/touch events
         itemElement.addEventListener('pointerdown', (e) => {
-            if (e.button !== 0) return;
+            if (e.button !== 0 && e.pointerType !== 'touch') return;
             dragging = true;
             hasMoved = false;
             startX = e.clientX;
+            currentX = e.clientX;
             itemElement.setPointerCapture(e.pointerId);
             itemElement.style.transition = 'none';
         });
@@ -259,8 +260,8 @@ export class VirtualScrollManager {
             if (!dragging) return;
             currentX = e.clientX;
             let deltaX = currentX - startX;
+            if (Math.abs(deltaX) > 5) hasMoved = true;
             if (deltaX < 0) {
-                hasMoved = true;
                 deltaX = Math.max(deltaX, -maxTranslate);
                 itemElement.style.transform = `translateX(${deltaX}px)`;
                 background.style.opacity = `${Math.min(1, Math.abs(deltaX) / threshold)}`;
@@ -270,7 +271,8 @@ export class VirtualScrollManager {
             if (!dragging) return;
             dragging = false;
             let deltaX = currentX - startX;
-            if (deltaX < -threshold) {
+            // Solo eliminar si realmente hubo swipe y se superó el umbral
+            if (hasMoved && deltaX < -threshold) {
                 itemElement.style.transition = 'transform 0.25s cubic-bezier(.4,2,.6,1), opacity 0.2s';
                 itemElement.style.transform = `translateX(-120%)`;
                 itemElement.style.opacity = '0';
