@@ -17,16 +17,12 @@ class UIManager {
 
     init() {
         this.setupDateDisplay();
-        // Inicializa el navigation manager
         this.navigationManager.setup();
-        // Inicializa el virtual scroll manager
         this.virtualScrollManager.setup();
-        // Inicializa el calendar manager
         this.calendarManager.setup();
         this.isInitialized = true;
     }
 
-    // Delegated navigation methods
     switchView(viewName) {
         this.navigationManager.switchView(viewName);
     }
@@ -65,7 +61,6 @@ class UIManager {
 
     cleanup() {
         this.virtualScrollManager.destroy();
-        // No need to remove navigation listeners as NavigationManager handles this
     }
 
     setupDateDisplay() {
@@ -181,7 +176,6 @@ createEntryCard(entry) {
     const formattedDate = this.formatDate(date, 'short');
     const preview = entry.content.substring(0, 180) + (entry.content.length > 180 ? '...' : '');
 
-    // Mejorar el display del mood con más variedad
     const moodDisplay = entry.mood ? `
     <div class="mood-indicator flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 rounded-2xl flex items-center justify-center shadow-lg border border-amber-200/60 dark:border-amber-700/60 hover:scale-110 transition-transform duration-200">
         <span class="text-2xl filter drop-shadow-sm">${entry.mood}</span>
@@ -192,7 +186,6 @@ createEntryCard(entry) {
 
     const wordCount = entry.content ? entry.content.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
     
-    // Mejorar el display del conteo de palabras
     const wordCountDisplay = wordCount > 0 ? `
     <div class="flex items-center gap-2 text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-600/40">
         <span class="material-icons text-sm">edit_note</span>
@@ -203,7 +196,6 @@ createEntryCard(entry) {
         <span class="text-xs font-medium">Sin contenido</span>
     </div>`;
 
-    // Agregar tiempo de lectura estimado
     const readingTime = Math.max(1, Math.ceil(wordCount / 200));
     const readingTimeDisplay = wordCount > 0 ? `
     <div class="flex items-center gap-1.5 text-slate-500">
@@ -211,7 +203,6 @@ createEntryCard(entry) {
         <span class="text-xs">${readingTime} min</span>
     </div>` : '';
 
-    // Mejorar la imagen con overlay y animación
     const imageDisplay = thumbnailPath ? `
     <div class="relative group/image">
         <img src="${thumbnailPath}" alt="Foto adjunta" class="w-12 h-12 object-cover rounded-2xl border border-slate-600/70 shadow-lg transition-all duration-300 group-hover/image:scale-105" />
@@ -223,10 +214,8 @@ createEntryCard(entry) {
 
     return `
     <div class="journal-card group relative bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md rounded-3xl shadow-xl border border-slate-700/60 p-6 mb-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:border-slate-600/80 hover:from-slate-800 hover:to-slate-900 focus-within:ring-2 focus-within:ring-blue-500/60 focus-within:ring-offset-2 focus-within:ring-offset-slate-900">
-        <!-- Gradiente sutil de fondo -->
         <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         
-        <!-- Header con fecha y controles -->
         <div class="relative flex items-start justify-between mb-5">
             <div class="flex items-center gap-3">
                 <span class="text-xs font-bold text-slate-200 bg-gradient-to-r from-slate-700/80 to-slate-600/80 px-3 py-1.5 rounded-full border border-slate-600/60 shadow-sm backdrop-blur-sm">
@@ -243,16 +232,13 @@ createEntryCard(entry) {
             </div>
         </div>
         
-        <!-- Contenido principal con mejor tipografía -->
         <div class="relative mb-6">
             <p class="text-slate-100 leading-relaxed text-sm md:text-base line-clamp-4 group-hover:text-white transition-colors duration-300 font-light tracking-wide">
                 ${preview}
             </p>
-            <!-- Fade gradient para el contenido cortado -->
             <div class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-800/95 to-transparent pointer-events-none opacity-60 group-hover:opacity-40 transition-opacity duration-300"></div>
         </div>
         
-        <!-- Footer mejorado con mejor espaciado -->
         <div class="relative flex items-center justify-between pt-4 border-t border-slate-700/50 group-hover:border-slate-600/60 transition-colors duration-300">
             ${wordCountDisplay}
             
@@ -262,7 +248,6 @@ createEntryCard(entry) {
             </button>
         </div>
         
-        <!-- Efecto de brillo sutil -->
         <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-600/40 to-transparent"></div>
     </div>
 `;
