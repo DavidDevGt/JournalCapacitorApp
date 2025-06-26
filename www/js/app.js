@@ -76,8 +76,8 @@ class DailyJournalApp {
         }
 
         try {
-            console.log('🚀 Initializing Daily Journal App...');
-            
+            //console.log('🚀 Initializing Daily Journal App...');
+
             await this.#validateAndSetupEnvironment();
             await this.#initializeModules();
             await this.#setupUI();
@@ -161,10 +161,10 @@ class DailyJournalApp {
         // Window resize and orientation
         this.#addEventListener(window, 'resize', this.handleResize);
         this.#addEventListener(window, 'orientationchange', this.handleOrientation);
-        
+
         // App lifecycle
         this.#addEventListener(window, 'beforeunload', this.handleBeforeUnload);
-        
+
         // Global error handling
         this.#addEventListener(window, 'error', this.handleGlobalError);
         this.#addEventListener(window, 'unhandledrejection', this.handleUnhandledRejection);
@@ -177,7 +177,7 @@ class DailyJournalApp {
     #setupPWAFeatures() {
         const pwaCleanup = setupPWAInstall();
         const offlineCleanup = setupOfflineDetection(ui);
-        
+
         this.#addCleanupTask(pwaCleanup);
         this.#addCleanupTask(offlineCleanup);
     }
@@ -190,7 +190,7 @@ class DailyJournalApp {
         return new Promise(resolve => {
             setTimeout(() => {
                 ui.hideLoading();
-                console.log('✅ Daily Journal App initialized successfully!');
+                ////console.log('✅ Daily Journal App initialized successfully!');
                 this.#isInitialized = true;
                 resolve();
             }, CONSTANTS.LOADING_DELAY);
@@ -317,7 +317,7 @@ class DailyJournalApp {
         const modal = this.#createModalWithHandlers(aboutHTML, (modal) => {
             const closeBtn = document.querySelector(SELECTORS.CLOSE_ABOUT);
             const closeIcon = document.querySelector(SELECTORS.CLOSE_ICON);
-            
+
             const closeAbout = () => this.#closeModalWithAnimation(modal);
 
             // Setup close handlers
@@ -347,7 +347,7 @@ class DailyJournalApp {
     destroy() {
         if (!this.#isInitialized) return;
 
-        console.log('🧹 Cleaning up Daily Journal App...');
+        ////console.log('🧹 Cleaning up Daily Journal App...');
 
         // Close active modal
         this.#closeActiveModal();
@@ -378,7 +378,7 @@ class DailyJournalApp {
         this.#cleanupTasks.length = 0;
         this.#isInitialized = false;
 
-        console.log('✅ Daily Journal App cleaned up successfully');
+        ////console.log('✅ Daily Journal App cleaned up successfully');
     }
 
     // Private utility methods
@@ -545,16 +545,27 @@ class DailyJournalApp {
     /**
      * Log error with consistent formatting
      * @param {string} message 
-     * @param {Error} error 
+     * @param {Error|Event|any} error 
      * @private
      */
     #logError(message, error) {
-        console.error(message, error);
         // TODO: Implement proper error logging mechanism (e.g., send to server)
-        // For now, just log to console
+        if (error === null || error === undefined) return;
+
+        if (error instanceof Error) {
+            console.error(message, error);
+        } else if (error && typeof error === 'object') {
+            const { message: msg, filename, lineno, colno, type } = error;
+            if (msg || filename || lineno || colno) {
+                console.error(`${message} (evento global):`, { msg, filename, lineno, colno, type, error });
+            } else {
+                console.error(message + ' (objeto sin .error):', error);
+            }
+        } else {
+            console.error(message + ' (valor no Error):', error);
+        }
     }
 
-    // Public getters for debugging/testing
     get isInitialized() {
         return this.#isInitialized;
     }
@@ -571,9 +582,9 @@ class AppBootstrap {
             window.app = app;
 
             await app.init();
-            
+
             AppBootstrap.setupEmergencySplashHide();
-            
+
             return app;
         } catch (error) {
             console.error('Failed to bootstrap application:', error);
@@ -586,7 +597,7 @@ class AppBootstrap {
             try {
                 const { SplashScreen } = await import('@capacitor/splash-screen');
                 await SplashScreen.hide({ fadeOutDuration: CONSTANTS.SPLASH_FADE_DURATION });
-                console.log('🚨 Emergency splash screen hide executed');
+                ////console.log('🚨 Emergency splash screen hide executed');
             } catch (error) {
                 console.warn('Emergency splash hide failed:', error);
             }
@@ -596,11 +607,33 @@ class AppBootstrap {
     }
 }
 
-// Initialize when DOM is ready
+if (!window._debugGlobalErrorHandlers) {
+    window._debugGlobalErrorHandlers = true;
+    window.onerror = function (msg, url, lineNo, columnNo, error) {
+
+        if (msg && msg.includes('ResizeObserver loop completed with undelivered notifications.')) {
+            return false;
+        }
+
+        console.error('[window.onerror]', {
+            msg, url, lineNo, columnNo, error,
+            errorType: error && error.constructor ? error.constructor.name : typeof error,
+            errorString: error ? error.toString() : null
+        });
+        return false;
+    };
+    window.onunhandledrejection = function (event) {
+        console.error('[window.onunhandledrejection]', {
+            reason: event.reason,
+            event
+        });
+        return false;
+    };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     AppBootstrap.initialize().catch(error => {
         console.error('Application bootstrap failed:', error);
-        // Could show user-friendly error message here
     });
 });
 

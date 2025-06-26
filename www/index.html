@@ -139,67 +139,8 @@
               </div>
             </div>
 
-            <!-- Photo Section -->
             <div
               class="bg-white dark:bg-gray-800 rounded-xl p-6 mb-6 border border-notion-border dark:border-notion-border-dark"
-            >
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold">Foto del día</h3>
-                <div class="flex gap-2">
-                  <!-- Botón de tomar foto -->
-<button
-  id="take-photo-btn"
-  class="p-3 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
-  title="Tomar foto"
-  aria-label="Tomar foto"
->
-  <span class="material-icons text-2xl text-black dark:text-white">camera_alt</span>
-</button>
-
-<!-- Botón de eliminar foto -->
-<button
-  id="remove-photo-btn"
-  class="p-3 bg-gradient-to-br from-red-500 to-red-700 rounded-full shadow-lg hover:scale-105 hover:shadow-xl dark:bg-red-600 dark:hover:bg-red-700 transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-400"
-  title="Eliminar foto"
-  aria-label="Eliminar foto"
->
-  <span class="material-icons text-2xl text-black dark:text-white">delete</span>
-</button>
-
-                </div>
-              </div>
-
-              <div id="photo-container" class="hidden">
-                <img
-                  id="daily-photo"
-                  class="w-full h-48 object-cover rounded-xl shadow-md border border-gray-200 dark:border-gray-700"
-                  alt="Foto del día"
-                />
-              </div>
-
-              <div
-                id="no-photo"
-                class="text-center py-8 text-notion-gray dark:text-notion-gray-dark"
-              >
-                <svg
-                  class="w-12 h-12 mx-auto mb-2 opacity-50"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  ></path>
-                </svg>
-                <p>No has agregado una foto hoy</p>
-              </div>
-            </div>
-
-            <div
-              class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-notion-border dark:border-notion-border-dark"
             >
               <h3 class="text-lg font-semibold mb-4">
                 Escribe lo que tu quieras
@@ -230,6 +171,70 @@
                     <span class="material-icons text-sm">share</span>
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <!-- Photo Section -->
+            <div
+              class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-notion-border dark:border-notion-border-dark"
+            >
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Foto del día</h3>
+                <div class="flex gap-2">
+                  <!-- Botón de tomar foto -->
+                  <button
+                    id="take-photo-btn"
+                    class="p-3 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    title="Tomar foto"
+                    aria-label="Tomar foto"
+                  >
+                    <span
+                      class="material-icons text-2xl text-black dark:text-white"
+                      >camera_alt</span
+                    >
+                  </button>
+
+                  <!-- Botón de eliminar foto -->
+                  <button
+                    id="remove-photo-btn"
+                    class="p-3 bg-gradient-to-br from-red-500 to-red-700 rounded-full shadow-lg hover:scale-105 hover:shadow-xl dark:bg-red-600 dark:hover:bg-red-700 transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-400"
+                    title="Eliminar foto"
+                    aria-label="Eliminar foto"
+                  >
+                    <span
+                      class="material-icons text-2xl text-black dark:text-white"
+                      >delete</span
+                    >
+                  </button>
+                </div>
+              </div>
+
+              <div id="photo-container" class="hidden">
+                <img
+                  id="daily-photo"
+                  class="w-full h-48 object-cover rounded-xl shadow-md border border-gray-200 dark:border-gray-700"
+                  alt="Foto del día"
+                />
+              </div>
+
+              <div
+                id="no-photo"
+                class="text-center py-8 text-notion-gray dark:text-notion-gray-dark"
+              >
+                <svg
+                  class="w-12 h-12 mx-auto mb-2 opacity-50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  ></path>
+                </svg>
+                <p>No has agregado una foto hoy</p>
               </div>
             </div>
           </div>
