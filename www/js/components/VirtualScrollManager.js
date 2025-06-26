@@ -395,11 +395,19 @@ export class VirtualScrollManager {
         if (!this.container) {
             this.setup();
         }
-        setTimeout(() => {
-            this.updateDimensions();
-            this.calculateVisibleRange();
-            this.renderItems();
-        }, 0);
+        requestAnimationFrame(() => {
+        // Medir performance
+        const start = performance.now();
+        
+        this.updateDimensions();
+        this.calculateVisibleRange();
+        this.renderItems();
+        
+        const end = performance.now();
+        if (end - start > 16) {
+            console.warn(`⚠️ Initialization took ${(end - start).toFixed(2)}ms`);
+        }
+    });
     }
 
     filterEntries(filteredEntries) {
