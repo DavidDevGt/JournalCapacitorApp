@@ -1,149 +1,152 @@
 export class CalendarManager {
-    constructor(uiManager) {
-        this.ui = uiManager;
-        this.currentMonth = new Date();
-        this.navigationSetup = false;
+  static DAY_HEADERS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  static WEEKS_TO_SHOW = 6;
+  static DAYS_IN_WEEK = 7;
+
+  #ui;
+  #currentMonth;
+  #navigationSetup = false;
+  #prevBtn;
+  #nextBtn;
+  #calendarGrid;
+  #currentMonthEl;
+
+  constructor(uiManager) {
+    this.#ui = uiManager;
+    this.#currentMonth = new Date();
+
+    // Cache static DOM nodes
+    this.#prevBtn = document.getElementById('prev-month');
+    this.#nextBtn = document.getElementById('next-month');
+    this.#calendarGrid = document.getElementById('calendar-grid');
+    this.#currentMonthEl = document.getElementById('current-month');
+  }
+
+  setup() {
+    this.#setupNavigation();
+    this.render();
+  }
+
+  #setupNavigation() {
+    if (this.#navigationSetup) return;
+    this.#navigationSetup = true;
+
+    const changeMonth = (delta) => {
+      this.#currentMonth.setMonth(this.#currentMonth.getMonth() + delta);
+      this.render();
+    };
+
+    this.#prevBtn?.addEventListener('click', () => changeMonth(-1));
+    this.#nextBtn?.addEventListener('click', () => changeMonth(+1));
+  }
+
+  async render() {
+    if (!this.#calendarGrid || !this.#currentMonthEl) return;
+
+    // Header
+    this.#currentMonthEl.textContent = this.#ui.formatDate(this.#currentMonth, 'month');
+
+    // Clear via fragment for better performance
+    this.#calendarGrid.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    // Day headers
+    for (const day of CalendarManager.DAY_HEADERS) {
+      const dh = document.createElement('div');
+      dh.classList.add('calendar-header');
+      dh.textContent = day;
+      frag.appendChild(dh);
     }
 
-    setup() {
-        this.setupNavigation();
+    // Prepare month span
+    const year = this.#currentMonth.getFullYear();
+    const month = this.#currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    // Load entries and build a lookup Map for O(1) access
+    let entriesMap = new Map();
+    if (window.db?.isInitialized) {
+      const monthEntries = await window.db.getEntriesForMonth(year, month + 1);
+      for (const e of monthEntries) {
+        entriesMap.set(e.date, e);
+      }
     }
 
-    setupNavigation() {
-        if (this.navigationSetup) return;
-        this.navigationSetup = true;
-        const prevBtn = document.getElementById('prev-month');
-        const nextBtn = document.getElementById('next-month');
+    const today = new Date();
+    const dateIterator = new Date(startDate);
 
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                this.currentMonth.setMonth(this.currentMonth.getMonth() - 1);
-                this.render();
-            });
-        }
-
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                this.currentMonth.setMonth(this.currentMonth.getMonth() + 1);
-                this.render();
-            });
-        }
+    // Generate days
+    for (let i = 0; i < CalendarManager.WEEKS_TO_SHOW * CalendarManager.DAYS_IN_WEEK; i++) {
+      frag.appendChild(this.#createDayElement(new Date(dateIterator), month, today, entriesMap));
+      dateIterator.setDate(dateIterator.getDate() + 1);
     }
 
-    async render() {
-        const calendarGrid = document.getElementById('calendar-grid');
-        const currentMonthEl = document.getElementById('current-month');
+    this.#calendarGrid.appendChild(frag);
+  }
 
-        if (!calendarGrid || !currentMonthEl) return;
+  #createDayElement(date, month, today, entriesMap) {
+    const dayEl = document.createElement('div');
+    dayEl.classList.add('calendar-day');
+    dayEl.textContent = date.getDate();
 
-        currentMonthEl.textContent = this.ui.formatDate(this.currentMonth, 'month');
-
-        calendarGrid.innerHTML = '';
-        
-        // Add day headers
-        const dayHeaders = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-        dayHeaders.forEach(day => {
-            const dayHeader = document.createElement('div');
-            dayHeader.className = 'calendar-header';
-            dayHeader.textContent = day;
-            calendarGrid.appendChild(dayHeader);
-        });
-
-        // Get month data
-        const year = this.currentMonth.getFullYear();
-        const month = this.currentMonth.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const startDate = new Date(firstDay);
-        startDate.setDate(startDate.getDate() - firstDay.getDay());
-
-        // Load entries for this month
-        let monthEntries = [];
-        if (window.db && window.db.isInitialized) {
-            monthEntries = await window.db.getEntriesForMonth(year, month + 1);
-        }
-
-        const today = new Date();
-        const currentDate = new Date(startDate);
-
-        // Generate calendar days
-        for (let i = 0; i < 42; i++) { // 6 weeks
-            const dayEl = this.createDayElement(currentDate, month, today, monthEntries);
-            calendarGrid.appendChild(dayEl);
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
+    if (date.getMonth() !== month) {
+      dayEl.classList.add('other-month');
+    }
+    if (this.#isSameDay(date, today)) {
+      dayEl.classList.add('today');
     }
 
-    createDayElement(currentDate, month, today, monthEntries) {
-        const dayEl = document.createElement('div');
-        dayEl.className = 'calendar-day';
-        dayEl.textContent = currentDate.getDate();
-
-        // Style for other months
-        if (currentDate.getMonth() !== month) {
-            dayEl.classList.add('other-month');
-        }
-
-        // Highlight today
-        if (this.isSameDay(currentDate, today)) {
-            dayEl.classList.add('today');
-        }
-
-        // Check for entries
-        const dateStr = this.ui.formatDateForStorage(currentDate);
-        const hasEntry = monthEntries.some(entry => entry.date === dateStr);
-        
-        if (hasEntry) {
-            dayEl.classList.add('has-entry');
-
-            // Add mood indicator if available
-            const entryWithMood = monthEntries.find(entry => entry.date === dateStr && entry.mood);
-            if (entryWithMood) {
-                const moodIndicator = document.createElement('span');
-                moodIndicator.className = 'absolute top-0 right-0 text-xs';
-                moodIndicator.textContent = entryWithMood.mood;
-                dayEl.style.position = 'relative';
-                dayEl.appendChild(moodIndicator);
-            }
-        }
-
-        // Add click handler
-        dayEl.addEventListener('click', () => {
-            if (currentDate.getMonth() === month) {
-                this.ui.selectDate(new Date(currentDate));
-            }
-        });
-
-        return dayEl;
+    const dateKey = this.#ui.formatDateForStorage(date);
+    const entry = entriesMap.get(dateKey);
+    if (entry) {
+      dayEl.classList.add('has-entry');
+      if (entry.mood) {
+        const mood = document.createElement('span');
+        mood.className = 'absolute top-0 right-0 text-xs';
+        mood.textContent = entry.mood;
+        dayEl.style.position = 'relative';
+        dayEl.appendChild(mood);
+      }
     }
 
-    isSameDay(date1, date2) {
-        return date1.getDate() === date2.getDate() &&
-            date1.getMonth() === date2.getMonth() &&
-            date1.getFullYear() === date2.getFullYear();
-    }
+    // Only fire for days in current month
+    dayEl.addEventListener('click', () => {
+      if (date.getMonth() === month) {
+        this.#ui.selectDate(new Date(date));
+      }
+    });
 
-    setCurrentMonth(date) {
-        this.currentMonth = new Date(date);
-        this.render();
-    }
+    return dayEl;
+  }
 
-    getCurrentMonth() {
-        return new Date(this.currentMonth);
-    }
+  #isSameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() &&
+           a.getMonth()    === b.getMonth() &&
+           a.getDate()     === b.getDate();
+  }
 
-    goToToday() {
-        this.currentMonth = new Date();
-        this.render();
-    }
+  setCurrentMonth(date) {
+    this.#currentMonth = new Date(date);
+    this.render();
+  }
 
-    goToPreviousMonth() {
-        this.currentMonth.setMonth(this.currentMonth.getMonth() - 1);
-        this.render();
-    }
+  getCurrentMonth() {
+    return new Date(this.#currentMonth);
+  }
 
-    goToNextMonth() {
-        this.currentMonth.setMonth(this.currentMonth.getMonth() + 1);
-        this.render();
-    }
+  goToToday() {
+    this.#currentMonth = new Date();
+    this.render();
+  }
+
+  goToPreviousMonth() {
+    this.setCurrentMonth(new Date(this.#currentMonth.setMonth(this.#currentMonth.getMonth() - 1)));
+  }
+
+  goToNextMonth() {
+    this.setCurrentMonth(new Date(this.#currentMonth.setMonth(this.#currentMonth.getMonth() + 1)));
+  }
 }
