@@ -18,7 +18,8 @@ import {
     getSettings,
     getSettingsAsync,
     saveSettings,
-    showSettingsModal
+    showSettingsModal,
+    generateExportConfirmHTML
 } from './helpers.js';
 
 // Constants
@@ -230,18 +231,50 @@ class DailyJournalApp {
             const elements = this.#getMenuElements();
             const closeMenu = () => this.#closeModal(modal);
 
-            // Setup menu event handlers
             const handlers = {
                 [SELECTORS.CLOSE_MENU]: closeMenu,
                 [SELECTORS.STATS_MENU_BTN]: () => { closeMenu(); this.showStats(); },
                 [SELECTORS.SETTINGS_MENU_BTN]: () => { closeMenu(); this.showSettings(); },
-                [SELECTORS.EXPORT_MENU_BTN]: () => { closeMenu(); journal.exportEntries(); },
+                [SELECTORS.EXPORT_MENU_BTN]: () => {
+                    closeMenu();
+                    this.showExportConfirmModal();
+                },
                 [SELECTORS.ABOUT_MENU_BTN]: () => { closeMenu(); this.showAbout(); }
             };
 
             this.#setupModalHandlers(elements, handlers, modal, closeMenu);
         });
 
+        this.#activeModal = modal;
+    }
+
+    /**
+     * Show export confirmation modal
+     */
+    showExportConfirmModal() {
+        const exportHTML = generateExportConfirmHTML();
+        const modal = this.#createModalWithHandlers(exportHTML, (modal) => {
+            const confirmBtn = modal.querySelector('#confirm-export-btn');
+            const cancelBtn = modal.querySelector('#cancel-export-btn');
+            const closeBtn = modal.querySelector('#close-export-confirm');
+            const closeModal = () => this.#closeModalWithAnimation(modal);
+
+            if (confirmBtn) {
+                this.#addEventListener(confirmBtn, 'click', async () => {
+                    closeModal();
+                    await journal.exportEntries();
+                });
+            }
+            if (cancelBtn) {
+                this.#addEventListener(cancelBtn, 'click', closeModal);
+            }
+            if (closeBtn) {
+                this.#addEventListener(closeBtn, 'click', closeModal);
+            }
+            this.#addEventListener(modal, 'click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        });
         this.#activeModal = modal;
     }
 

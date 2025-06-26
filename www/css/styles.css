@@ -2283,6 +2283,7 @@ textarea:focus:is(.dark *) {
 }
 
 @keyframes subtle-pulse {
+
     0%,
     100% {
         transform: scale(1);
@@ -2296,6 +2297,7 @@ textarea:focus:is(.dark *) {
 }
 
 @keyframes pulse-dot {
+
     0%,
     100% {
         opacity: 0.8;
@@ -2519,6 +2521,7 @@ textarea:focus:is(.dark *) {
         transform: scale(0);
         opacity: 1;
     }
+
     100% {
         transform: scale(4);
         opacity: 0;
@@ -2547,31 +2550,31 @@ textarea:focus:is(.dark *) {
         padding: 1rem;
         border-radius: 1rem;
     }
-    
+
     .entry-card-compact {
         padding: 0.75rem;
     }
-    
+
     .mood-indicator {
         width: 2.5rem;
         height: 2.5rem;
     }
-    
+
     .mood-indicator-small {
         width: 2rem;
         height: 2rem;
     }
-    
+
     .entry-photo-card {
         width: 4rem;
         height: 4rem;
     }
-    
+
     .entry-photo-compact {
         width: 3rem;
         height: 3rem;
     }
-    
+
     .entry-card-material:hover,
     .entry-card-compact:hover {
         transform: translateY(-1px);
@@ -2587,16 +2590,17 @@ textarea:focus:is(.dark *) {
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
+
     .entry-card-material,
     .entry-card-compact {
         border-width: 2px;
     }
-    
+
     .mood-indicator,
     .mood-indicator-small {
         border-width: 2px;
     }
-    
+
     .entry-photo-card,
     .entry-photo-compact {
         border-width: 2px;
@@ -2605,6 +2609,7 @@ textarea:focus:is(.dark *) {
 
 /* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
+
     .entry-card-material,
     .entry-card-compact,
     .mood-indicator,
@@ -2614,10 +2619,16 @@ textarea:focus:is(.dark *) {
         transition: none;
         transform: none;
     }
-    
+
     .entry-card-material:hover,
     .entry-card-compact:hover {
         transform: none;
     }
 }
 
+#cancel-export-btn {
+    border-bottom-left-radius: 0.75rem;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
