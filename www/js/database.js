@@ -21,7 +21,7 @@ class DatabaseManager {
         this.isWeb = this.platform === 'web';
         this.entryCache = new Map();
         this.settingsCache = new Map();
-        this.cacheExpiry = 5 * 60 * 1000; // 5 minutos
+        this.cacheExpiry = 5 * 60 * 1000; // 5 min
     }
 
     /**
@@ -32,7 +32,7 @@ class DatabaseManager {
         if (this.isInitialized) return;
 
         try {
-            console.log(`Initializing database for platform: ${this.platform}`);
+            //console.log(`Initializing database for platform: ${this.platform}`);
 
             if (this.isWeb) {
                 await this._initWebStorage();
@@ -41,12 +41,12 @@ class DatabaseManager {
             }
 
             this.isInitialized = true;
-            console.log('Database initialized successfully');
+            //console.log('Database initialized successfully');
         } catch (error) {
             console.error('Database initialization failed:', error);
 
             if (!this.isWeb) {
-                console.log('Falling back to localStorage...');
+                //console.log('Falling back to localStorage...');
                 await this._initWebStorage();
                 this.isInitialized = true;
             }
@@ -62,7 +62,7 @@ class DatabaseManager {
         if (!this._isLocalStorageAvailable()) {
             throw new Error('localStorage is not available');
         }
-        console.log('Using localStorage for web platform');
+        //console.log('Using localStorage for web platform');
     }
 
     /**
@@ -110,7 +110,6 @@ class DatabaseManager {
                 word_count INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                -- Campos adicionales para futuras mejoras
                 tags TEXT, -- JSON array de tags
                 weather TEXT,
                 location TEXT,
@@ -136,7 +135,6 @@ class DatabaseManager {
                 FOREIGN KEY (entry_date) REFERENCES entries(date) ON DELETE CASCADE
             );
 
-            -- Índices para optimizar consultas
             CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date);
             CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_entries_mood ON entries(mood);
@@ -169,7 +167,7 @@ class DatabaseManager {
 
             for (const column of requiredColumns) {
                 if (!columns.has(column.name)) {
-                    console.log(`Adding column ${column.name} to entries table...`);
+                    //console.log(`Adding column ${column.name} to entries table...`);
                     await this.db.execute(`ALTER TABLE entries ADD COLUMN ${column.name} ${column.type}`);
                 }
             }
