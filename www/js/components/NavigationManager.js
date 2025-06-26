@@ -111,7 +111,7 @@ export class NavigationManager {
     switchView(viewName) {
         if (this.ui.currentView === viewName) return;
 
-        console.log(`🔄 Switching from ${this.ui.currentView} to ${viewName}`);
+        //console.log(`🔄 Switching from ${this.ui.currentView} to ${viewName}`);
 
         const currentViewEl = document.getElementById(`${this.ui.currentView}-view`);
         if (currentViewEl) {

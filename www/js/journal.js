@@ -126,7 +126,7 @@ class JournalManager {
             // Dynamic import to avoid affecting initial performance
             const SentimentAnalyzer = (await import('./sentiment-analyzer.js')).default;
             this.sentimentAnalyzer = new SentimentAnalyzer();
-            console.log('✅ Sentiment analyzer initialized');
+            //console.log('✅ Sentiment analyzer initialized');
         } catch (error) {
             console.warn('Could not load sentiment analyzer:', error);
         }
@@ -453,14 +453,24 @@ class JournalManager {
 
         try {
             const date = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : new Date().toISOString().split('T')[0];
-            const content = this.journalTextarea ? this.journalTextarea.value : '';
+            let content = this.journalTextarea ? this.journalTextarea.value : '';
+
+            if (content.length > 5000) {
+                if (window.ui) {
+                    window.ui.showToast('El texto no puede superar los 5000 caracteres', 'warning');
+                }
+                return;
+            }
+            content = content.replace(/[<>]/g, '');
 
             if (!content.trim() && !this.currentMood && !this.currentPhoto) {
                 if (!silent && window.ui) {
                     window.ui.showToast('No hay contenido para guardar', 'warning');
                 }
                 return;
-            } const result = await window.db.saveEntry(
+            }
+
+            const result = await window.db.saveEntry(
                 date,
                 content,
                 this.currentMood,
@@ -487,7 +497,7 @@ class JournalManager {
     }
 
     async loadTodayEntry() {
-        console.log('🔄 Cargando entrada de hoy...');
+        //console.log('🔄 Cargando entrada de hoy...');
         if (!window.db || !window.db.isInitialized) return;
 
         try {
@@ -795,7 +805,7 @@ class JournalManager {
                 ]
             });
 
-            console.log(`Notification scheduled for ${notificationTime}`);
+            //console.log(`Notification scheduled for ${notificationTime}`);
         } catch (error) {
             console.error('Error scheduling notifications:', error);
         }
@@ -1073,7 +1083,7 @@ class JournalManager {
             }
 
             if (generated > 0) {
-                console.log(`Generated ${generated} thumbnails for existing entries`);
+                //console.log(`Generated ${generated} thumbnails for existing entries`);
                 if (window.ui) {
                     window.ui.showToast(`Optimizadas ${generated} imágenes`, 'success');
                     window.ui.loadAllEntries(); // Refresh entries list

@@ -7,7 +7,7 @@ export class VirtualScrollManager {
             visibleItems: 0,
             scrollTop: 0,
             totalItems: 0,
-            bufferSize: 5,
+            bufferSize: 8,
             startIndex: 0,
             endIndex: 0
         };
@@ -115,10 +115,17 @@ export class VirtualScrollManager {
         const { scrollTop, itemHeight, visibleItems, bufferSize } = this.config;
         const totalItems = this.filteredEntries.length;
 
-        const startIndex = Math.floor(scrollTop / itemHeight);
-        const endIndex = Math.min(startIndex + visibleItems + bufferSize * 2, totalItems);
+        let startIndex = Math.floor(scrollTop / itemHeight);
+        let endIndex = startIndex + visibleItems + bufferSize * 2;
 
-        this.config.startIndex = Math.max(0, startIndex - bufferSize);
+        if (startIndex >= totalItems) {
+            startIndex = Math.max(0, totalItems - visibleItems - bufferSize * 2);
+        }
+        startIndex = Math.max(0, startIndex - bufferSize);
+        endIndex = Math.min(totalItems, endIndex);
+        if (endIndex < startIndex) endIndex = startIndex;
+
+        this.config.startIndex = startIndex;
         this.config.endIndex = endIndex;
     }
 
@@ -126,7 +133,10 @@ export class VirtualScrollManager {
         if (!this.content) return;
 
         const { startIndex, endIndex } = this.config;
-        const visibleEntries = this.filteredEntries.slice(startIndex, endIndex);
+        let visibleEntries = [];
+        if (this.filteredEntries.length > 0 && startIndex < endIndex) {
+            visibleEntries = this.filteredEntries.slice(startIndex, endIndex);
+        }
 
         this.content.innerHTML = '';
 
@@ -136,8 +146,8 @@ export class VirtualScrollManager {
         }
 
         const fragment = document.createDocumentFragment();
-        visibleEntries.forEach((entry, index) => {
-            const itemElement = this.createItem(entry, startIndex + index);
+        visibleEntries.forEach((entry, idx) => {
+            const itemElement = this.createItem(entry, startIndex + idx);
             fragment.appendChild(itemElement);
         });
 
@@ -148,9 +158,27 @@ export class VirtualScrollManager {
     }
 
     createItem(entry, index) {
+        const swipeWrapper = document.createElement('div');
+        swipeWrapper.className = 'swipe-wrapper relative mb-3';
+        swipeWrapper.style.height = `${this.config.itemHeight}px`;
+        swipeWrapper.setAttribute('data-index', index);
+
+        const background = document.createElement('div');
+        background.className = 'swipe-bg absolute inset-0 flex items-center z-0';
+        background.style.background = 'linear-gradient(90deg,rgb(224, 74, 74) 60%,rgb(252, 139, 139) 100%)';
+        background.innerHTML = `
+            <span class="material-icons text-white text-3xl animate-trash" style="position:absolute; right:2rem; top:50%; transform:translateY(-50%); pointer-events:none;">delete</span>
+        `;
+        background.style.borderRadius = '0.75rem';
+        background.style.transition = 'opacity 0.2s';
+        background.style.opacity = '0.9';
+
         const itemElement = document.createElement('div');
-        itemElement.className = 'virtual-scroll-item mb-3';
-        itemElement.style.height = `${this.config.itemHeight}px`;
+        itemElement.className = 'virtual-scroll-item z-10';
+        itemElement.style.height = '100%';
+        itemElement.style.willChange = 'transform';
+        itemElement.style.touchAction = 'pan-y';
+        itemElement.style.transition = 'transform 0.25s cubic-bezier(.4,2,.6,1), box-shadow 0.2s';
         itemElement.setAttribute('data-index', index);
 
         const date = new Date(entry.date);
@@ -210,7 +238,90 @@ export class VirtualScrollManager {
         </div>
 `;
 
-        return itemElement;
+        // --- Swipe gesture logic ---
+        let startX = 0;
+        let currentX = 0;
+        let dragging = false;
+        let hasMoved = false;
+        const threshold = 60; // px para eliminar
+        const maxTranslate = 80; // px max swipe
+
+        // Pointer/touch events
+        itemElement.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            dragging = true;
+            hasMoved = false;
+            startX = e.clientX;
+            itemElement.setPointerCapture(e.pointerId);
+            itemElement.style.transition = 'none';
+        });
+        itemElement.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            currentX = e.clientX;
+            let deltaX = currentX - startX;
+            if (deltaX < 0) {
+                hasMoved = true;
+                deltaX = Math.max(deltaX, -maxTranslate);
+                itemElement.style.transform = `translateX(${deltaX}px)`;
+                background.style.opacity = `${Math.min(1, Math.abs(deltaX) / threshold)}`;
+            }
+        });
+        itemElement.addEventListener('pointerup', (e) => {
+            if (!dragging) return;
+            dragging = false;
+            let deltaX = currentX - startX;
+            if (deltaX < -threshold) {
+                itemElement.style.transition = 'transform 0.25s cubic-bezier(.4,2,.6,1), opacity 0.2s';
+                itemElement.style.transform = `translateX(-120%)`;
+                itemElement.style.opacity = '0';
+                setTimeout(() => {
+                    this.handleDeleteEntry(index);
+                }, 220);
+            } else {
+                itemElement.style.transition = 'transform 0.25s cubic-bezier(.4,2,.6,1)';
+                itemElement.style.transform = 'translateX(0)';
+                background.style.opacity = '0.9';
+            }
+        });
+        itemElement.addEventListener('pointercancel', () => {
+            dragging = false;
+            itemElement.style.transition = 'transform 0.25s cubic-bezier(.4,2,.6,1)';
+            itemElement.style.transform = 'translateX(0)';
+            background.style.opacity = '0.9';
+        });
+
+        swipeWrapper.appendChild(background);
+        swipeWrapper.appendChild(itemElement);
+        return swipeWrapper;
+    }
+
+    async handleDeleteEntry(index) {
+        const entry = this.filteredEntries[index];
+        if (!entry || !entry.date) {
+            if (window.ui && typeof window.ui.showToast === 'function') {
+                window.ui.showToast('No se pudo eliminar la entrada (sin fecha)', 'error');
+            }
+            return;
+        }
+        try {
+            if (window.db && typeof window.db.deleteEntry === 'function') {
+                const result = await window.db.deleteEntry(entry.date);
+                if (!result || result.success === false) {
+                    throw (result && result.error) || new Error('Error desconocido al eliminar');
+                }
+            }
+            this.filteredEntries.splice(index, 1);
+            this.allEntries = this.allEntries.filter(e => e.date !== entry.date);
+            this.renderItems();
+            if (window.ui && typeof window.ui.showToast === 'function') {
+                window.ui.showToast('Entrada eliminada', 'success');
+            }
+        } catch (error) {
+            console.error('Error eliminando entrada:', error);
+            if (window.ui && typeof window.ui.showToast === 'function') {
+                window.ui.showToast('Error al eliminar la entrada', 'error');
+            }
+        }
     }
 
     getTimeAgo(date) {
@@ -274,7 +385,6 @@ export class VirtualScrollManager {
         `;
     }
 
-    // Public methods
     loadEntries(entries) {
         this.allEntries = entries;
         this.filteredEntries = entries;
@@ -285,9 +395,11 @@ export class VirtualScrollManager {
         if (!this.container) {
             this.setup();
         }
-        this.updateDimensions();
-        this.calculateVisibleRange();
-        this.renderItems();
+        setTimeout(() => {
+            this.updateDimensions();
+            this.calculateVisibleRange();
+            this.renderItems();
+        }, 0);
     }
 
     filterEntries(filteredEntries) {

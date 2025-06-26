@@ -102,7 +102,7 @@ class UIManager {
     }
 
     selectDate(date) {
-        console.log(`📅 Selecting date: ${date}`);
+        //console.log(`📅 Selecting date: ${date}`);
 
         this.currentDate = new Date(date);
         this.switchView('today');
