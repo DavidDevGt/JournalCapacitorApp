@@ -1,0 +1,38 @@
+digraph SentimentAnalysisFlow {
+    rankdir=TB;
+    node [shape=box, style=filled, color="#e0e0e0", fontname="Arial"];
+
+    InputText [label="📝 Input Text", fillcolor="#ffccff"];
+    CheckCache [label="🧠 ¿En Cache?", shape=diamond, fillcolor="#ffffcc"];
+    ReturnCached [label="🔁 Return Cached Result", fillcolor="#ccffcc"];
+    Preprocess [label="🧼 Preprocess Text\n(lowercase, clean)", fillcolor="#ffffff"];
+    Tokenize [label="✂️ Tokenize Words"];
+    CheckMinWords [label="🔍 ¿Min. Words >= Threshold?", shape=diamond];
+    ReturnDefault [label="⚪ Return Default Result", fillcolor="#ffcccc"];
+    ScoreHeuristic [label="🧮 Heuristic Scoring\n(SentimentWords, Negaciones, Intensificadores)"];
+    ScoreBayes [label="📊 Bayes Prediction\n(Naive Bayes)"];
+    DetectEmotions [label="❤️ Detect Emotions\n(keyword matching)"];
+    CombineScores [label="⚖️ Combine Scores\n(0.7 Heuristic + 0.3 Bayes)"];
+    CalculateConfidence [label="📏 Calculate Confidence"];
+    MapEmoji [label="😊 Map Score to Emoji"];
+    BuildResult [label="🧱 Build Final Result"];
+    SaveCache [label="💾 Save in Cache"];
+    ReturnResult [label="📤 Return Final Result", fillcolor="#ccccff"];
+
+    // Connections
+    InputText -> CheckCache;
+    CheckCache -> ReturnCached [label="✅ Sí"];
+    CheckCache -> Preprocess [label="❌ No"];
+    Preprocess -> Tokenize;
+    Tokenize -> CheckMinWords;
+    CheckMinWords -> ReturnDefault [label="❌ No"];
+    CheckMinWords -> ScoreHeuristic [label="✅ Sí"];
+    ScoreHeuristic -> ScoreBayes;
+    ScoreBayes -> DetectEmotions;
+    DetectEmotions -> CombineScores;
+    CombineScores -> CalculateConfidence;
+    CalculateConfidence -> MapEmoji;
+    MapEmoji -> BuildResult;
+    BuildResult -> SaveCache;
+    SaveCache -> ReturnResult;
+}

@@ -1,0 +1,132 @@
+graph TD
+    A[📱 Inicio de la App] --> B{Validar Entorno}
+    B -->|❌ Falla| C[🚨 Manejo de Error de Inicialización]
+    B -->|✅ Válido| D[🔄 Mostrar Loading]
+    
+    D --> E[🔧 Inicializar Módulos]
+    E --> F[📱 Capacitor]
+    E --> G[🗄️ Base de Datos]
+    E --> H[🎨 UI]
+    E --> I[📝 Journal]
+    
+    F --> J[⚙️ Configurar Listeners de Capacitor]
+    G --> K[💾 Conectar BD]
+    H --> L[🌙 Cargar Preferencias Dark Mode]
+    I --> M[📖 Preparar Sistema de Escritura]
+    
+    J --> N[🎯 Configurar UI Core]
+    K --> N
+    L --> N
+    M --> N
+    
+    N --> O[📅 Navegación de Calendario]
+    N --> P[🔍 Sistema de Búsqueda]
+    N --> Q[🌙 Toggle Dark Mode]
+    N --> R[⌨️ Atajos de Teclado]
+    N --> S[📋 Menú Principal]
+    
+    O --> T[🎧 Event Listeners]
+    P --> T
+    Q --> T
+    R --> T
+    S --> T
+    
+    T --> U[📱 PWA Features]
+    U --> V[📲 Instalación PWA]
+    U --> W[📶 Detección Offline]
+    
+    V --> X[🎉 Finalizar Inicialización]
+    W --> X
+    
+    X --> Y[🚀 App Lista]
+    Y --> Z[🔄 Ciclo de Vida Activo]
+    
+    %% Flujo de Interacciones Principales
+    Z --> AA{Usuario Interactúa}
+    AA -->|Menu| BB[📋 Mostrar Menú]
+    AA -->|Escribir| CC[✍️ Editor de Texto]
+    AA -->|Buscar| DD[🔍 Buscar Entradas]
+    AA -->|Navegar| EE[📅 Cambiar Fecha]
+    
+    BB --> FF{Opción del Menú}
+    FF -->|Stats| GG[📊 Mostrar Estadísticas]
+    FF -->|Settings| HH[⚙️ Configuraciones]
+    FF -->|Export| II[📤 Exportar Datos]
+    FF -->|About| JJ[ℹ️ Información]
+    
+    CC --> KK[💾 Autoguardado]
+    DD --> LL[📋 Resultados Filtrados]
+    EE --> MM[🔄 Actualizar Vista]
+    
+    GG --> NN[📊 Calcular Stats del Journal]
+    HH --> OO[⚙️ Modal de Configuración]
+    II --> PP[📁 Generar Archivo de Exportación]
+    JJ --> QQ[ℹ️ Modal Informativo]
+    
+    KK --> RR[🗄️ Persistir en BD]
+    LL --> SS[🎨 Renderizar UI]
+    MM --> TT[📅 Actualizar Calendario]
+    
+    %% Gestión de Estados y Errores
+    NN --> UU[📱 Modal de Stats]
+    OO --> VV[💾 Guardar Preferencias]
+    PP --> WW[💾 Descargar Archivo]
+    QQ --> XX[📱 Modal About]
+    
+    RR --> YY{¿Error de BD?}
+    YY -->|❌ Sí| ZZ[🚨 Mostrar Error]
+    YY -->|✅ No| AAA[✅ Confirmar Guardado]
+    
+    SS --> BBB[🎨 UI Actualizada]
+    TT --> CCC[📅 Vista Sincronizada]
+    
+    UU --> DDD[❌ Cerrar Modal]
+    VV --> EEE[⚙️ Configuración Aplicada]
+    WW --> FFF[📁 Descarga Completa]
+    XX --> GGG[❌ Cerrar Modal]
+    
+    %% Cleanup y Cierre
+    DDD --> Z
+    EEE --> Z
+    FFF --> Z
+    GGG --> Z
+    AAA --> Z
+    BBB --> Z
+    CCC --> Z
+    ZZ --> Z
+    
+    %% Manejo de Errores Globales
+    HHH[🌐 Error Global] --> III[📝 Log de Error]
+    III --> JJJ{¿Error Crítico?}
+    JJJ -->|❌ Sí| KKK[🚨 Reiniciar App]
+    JJJ -->|⚠️ No| Z
+    
+    %% Destrucción de la App
+    Z --> LLL{¿Cerrar App?}
+    LLL -->|✅ Sí| MMM[🧹 Cleanup]
+    LLL -->|❌ No| Z
+    
+    MMM --> NNN[🎧 Remover Event Listeners]
+    MMM --> OOO[🗄️ Cerrar Conexiones BD]
+    MMM --> PPP[📱 Cleanup Modales]
+    MMM --> QQQ[📱 Cleanup Capacitor]
+    
+    NNN --> RRR[💀 App Destruida]
+    OOO --> RRR
+    PPP --> RRR
+    QQQ --> RRR
+    
+    %% Estilos
+    classDef startEnd fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#fff
+    classDef process fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    classDef decision fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    classDef error fill:#F44336,stroke:#C62828,stroke-width:2px,color:#fff
+    classDef ui fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    classDef data fill:#00BCD4,stroke:#00838F,stroke-width:2px,color:#fff
+    
+    class A,Y,RRR startEnd
+    class B,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X process
+    class AA,FF,YY,JJJ,LLL decision
+    class C,ZZ,HHH,III,KKK error
+    class BB,CC,DD,EE,GG,HH,II,JJ,UU,OO,QQ,XX,DDD,GGG ui
+    class KK,RR,VV,WW,AAA,MMM,NNN,OOO,PPP,QQQ data
