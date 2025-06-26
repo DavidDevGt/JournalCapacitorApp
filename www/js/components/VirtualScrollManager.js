@@ -397,19 +397,18 @@ export class VirtualScrollManager {
         if (!this.container) {
             this.setup();
         }
+        // Esperar a que el DOM tenga la altura real del contenedor
         requestAnimationFrame(() => {
-        // Medir performance
-        const start = performance.now();
-        
-        this.updateDimensions();
-        this.calculateVisibleRange();
-        this.renderItems();
-        
-        const end = performance.now();
-        if (end - start > 16) {
-            console.warn(`⚠️ Initialization took ${(end - start).toFixed(2)}ms`);
-        }
-    });
+            this.updateDimensions();
+            this.calculateVisibleRange();
+            this.renderItems();
+            // Forzar un segundo render tras un pequeño delay para asegurar altura correcta
+            setTimeout(() => {
+                this.updateDimensions();
+                this.calculateVisibleRange();
+                this.renderItems();
+            }, 30);
+        });
     }
 
     filterEntries(filteredEntries) {

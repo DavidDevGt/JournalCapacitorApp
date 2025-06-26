@@ -38,6 +38,12 @@ export class CalendarManager {
         this.#nextBtn?.addEventListener('click', () => changeMonth(+1));
     }
 
+    #normalizeDate(date) {
+        const normalized = new Date(date);
+        normalized.setHours(0, 0, 0, 0);
+        return normalized;
+    }
+
     async render() {
         if (!this.#calendarGrid || !this.#currentMonthEl) return;
 
@@ -57,42 +63,78 @@ export class CalendarManager {
         const month = this.#currentMonth.getMonth();
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
-        const startDate = new Date(firstDay);
-        startDate.setDate(startDate.getDate() - firstDay.getDay());
+        
+        const normalizedFirstDay = this.#normalizeDate(firstDay);
+        const normalizedLastDay = this.#normalizeDate(lastDay);
+        
+        const startDate = new Date(normalizedFirstDay);
+        const firstDayOfWeek = normalizedFirstDay.getDay(); // 0=Domingo
+        startDate.setDate(startDate.getDate() - firstDayOfWeek);
+        startDate.setHours(0, 0, 0, 0);
 
         let entriesMap = new Map();
         if (window.db?.isInitialized) {
             const monthEntries = await window.db.getEntriesForMonth(year, month + 1);
             for (const e of monthEntries) {
-                entriesMap.set(e.date, e);
+                const dbDateKey = e.date;
+                entriesMap.set(dbDateKey, e);
+                
+                const entryDate = this.#normalizeDate(new Date(e.date));
+                const formattedKey = this.#ui.formatDateForStorage(entryDate);
+                
+                console.log('[CalendarManager] Entry mapping:', {
+                    originalDate: e.date,
+                    dbDateKey,
+                    formattedKey,
+                    entryDate: entryDate.toISOString(),
+                    content: e.content?.substring(0, 30) + '...'
+                });
             }
         }
 
-        const today = new Date();
+        const today = this.#normalizeDate(new Date());
         const dateIterator = new Date(startDate);
 
         for (let i = 0; i < CalendarManager.WEEKS_TO_SHOW * CalendarManager.DAYS_IN_WEEK; i++) {
-            frag.appendChild(this.#createDayElement(new Date(dateIterator), month, today, entriesMap));
+            const currentDate = new Date(dateIterator);
+            frag.appendChild(this.#createDayElement(currentDate, month, today, entriesMap));
             dateIterator.setDate(dateIterator.getDate() + 1);
+            dateIterator.setHours(0, 0, 0, 0);
         }
 
         this.#calendarGrid.appendChild(frag);
     }
 
     #createDayElement(date, month, today, entriesMap) {
+        const normalizedDate = this.#normalizeDate(date);
+        
         const dayEl = document.createElement('div');
         dayEl.classList.add('calendar-day');
-        dayEl.textContent = date.getDate();
+        dayEl.textContent = normalizedDate.getDate();
 
-        if (date.getMonth() !== month) {
+        if (normalizedDate.getMonth() !== month) {
             dayEl.classList.add('other-month');
         }
-        if (this.#isSameDay(date, today)) {
+        if (this.#isSameDay(normalizedDate, today)) {
             dayEl.classList.add('today');
         }
 
-        const dateKey = this.#ui.formatDateForStorage(date);
-        const entry = entriesMap.get(dateKey);
+        const dateKey = this.#ui.formatDateForStorage(normalizedDate);
+        
+        const dateKeyISO = normalizedDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        const entry = entriesMap.get(dateKey) || entriesMap.get(dateKeyISO);
+        
+        if (normalizedDate.getDate() === 3 && normalizedDate.getMonth() === 5) { // Si es 3 de junio
+            console.log('[CalendarManager] Debug para día 3:', {
+                normalizedDate: normalizedDate.toISOString(),
+                dateKey,
+                dateKeyISO,
+                foundEntry: entry,
+                availableKeys: Array.from(entriesMap.keys()),
+                entryContent: entry?.content
+            });
+        }
+        
         if (entry) {
             dayEl.classList.add('has-entry');
             if (entry.mood) {
@@ -105,8 +147,16 @@ export class CalendarManager {
         }
 
         dayEl.addEventListener('click', () => {
-            if (date.getMonth() === month) {
-                this.#ui.selectDate(new Date(date));
+            if (normalizedDate.getMonth() === month) {
+                console.log('[CalendarManager] Día seleccionado:', {
+                    date: new Date(normalizedDate),
+                    dateKey,
+                    entry,
+                    today: new Date(today),
+                    month,
+                    entriesMapKeys: Array.from(entriesMap.keys())
+                });
+                this.#ui.selectDate(new Date(normalizedDate));
             }
         });
 
@@ -114,9 +164,13 @@ export class CalendarManager {
     }
 
     #isSameDay(a, b) {
-        return a.getFullYear() === b.getFullYear() &&
-            a.getMonth() === b.getMonth() &&
-            a.getDate() === b.getDate();
+        // Crear copias para no mutar los originales
+        const dateA = this.#normalizeDate(a);
+        const dateB = this.#normalizeDate(b);
+        
+        return dateA.getFullYear() === dateB.getFullYear() &&
+            dateA.getMonth() === dateB.getMonth() &&
+            dateA.getDate() === dateB.getDate();
     }
 
     setCurrentMonth(date) {
@@ -141,3 +195,6 @@ export class CalendarManager {
         this.setCurrentMonth(new Date(this.#currentMonth.setMonth(this.#currentMonth.getMonth() + 1)));
     }
 }
+
+// Utiliza la función de helpers para formatear la fecha localmente
+// (Asegúrate de que CalendarManager reciba el UIManager con la función corregida)

@@ -442,7 +442,13 @@ class JournalManager {
         }
 
         try {
-            const date = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : new Date().toISOString().split('T')[0];
+            const date = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : (() => {
+                const d = new Date();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            })();
             let content = this.journalTextarea ? this.journalTextarea.value : '';
 
             if (content.length > 5000) {

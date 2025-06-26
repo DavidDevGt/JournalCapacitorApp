@@ -11,8 +11,12 @@ const OPTIONS = {
 export const formatDate = (date, fmt = 'short') =>
     new Intl.DateTimeFormat(LOCALE, OPTIONS[fmt] || OPTIONS.short).format(date)
 
-export const formatDateForStorage = date =>
-    date.toISOString().slice(0, 10)
+export const formatDateForStorage = date => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 export const isSameDay = (a, b) =>
     a.toDateString() === b.toDateString()
@@ -416,7 +420,7 @@ export const generateExportConfirmHTML = () => `
                     <svg class="w-12 h-12" fill="none" viewBox="0 0 24 24">
                         <rect x="3" y="3" width="18" height="18" rx="3" fill="#fff" class="dark:fill-none" stroke="#444" stroke-width="2" class="dark:stroke-white"/>
                         <path d="M12 8v5m0 0l-2-2m2 2l2-2" stroke="#444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:stroke-white"/>
-                        <path d="M8 16h8" stroke="#444" stroke-width="2" stroke-linecap="round" class="dark:stroke-white"/>
+                        <path d="M8 16h8" stroke="#444" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
                 <h3 class="text-2xl font-bold mb-2 bg-gradient-to-r from-indigo-900 to-violet-900 dark:from-indigo-600 dark:to-violet-600 bg-clip-text text-transparent">
