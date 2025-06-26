@@ -32,8 +32,6 @@ class DatabaseManager {
         if (this.isInitialized) return;
 
         try {
-            //console.log(`Initializing database for platform: ${this.platform}`);
-
             if (this.isWeb) {
                 await this._initWebStorage();
             } else {
@@ -41,12 +39,10 @@ class DatabaseManager {
             }
 
             this.isInitialized = true;
-            //console.log('Database initialized successfully');
         } catch (error) {
             console.error('Database initialization failed:', error);
 
             if (!this.isWeb) {
-                //console.log('Falling back to localStorage...');
                 await this._initWebStorage();
                 this.isInitialized = true;
             }
@@ -62,7 +58,6 @@ class DatabaseManager {
         if (!this._isLocalStorageAvailable()) {
             throw new Error('localStorage is not available');
         }
-        //console.log('Using localStorage for web platform');
     }
 
     /**
@@ -167,7 +162,6 @@ class DatabaseManager {
 
             for (const column of requiredColumns) {
                 if (!columns.has(column.name)) {
-                    //console.log(`Adding column ${column.name} to entries table...`);
                     await this.db.execute(`ALTER TABLE entries ADD COLUMN ${column.name} ${column.type}`);
                 }
             }

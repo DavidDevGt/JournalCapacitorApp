@@ -99,8 +99,6 @@ export const initializeCapacitor = async () => {
         const { Keyboard } = await import('@capacitor/keyboard');
         const { SplashScreen } = await import('@capacitor/splash-screen');
 
-        //console.log(`📱 Platform: ${Capacitor.getPlatform()}`);
-
         if (Capacitor.isNativePlatform()) {
             const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -120,7 +118,6 @@ export const initializeCapacitor = async () => {
                     await SplashScreen.hide({
                         fadeOutDuration: 500
                     });
-                    //console.log('✅ Splash screen hidden successfully');
                 } catch (error) {
                     console.warn('Could not hide splash screen manually, auto-hide will handle it:', error);
                 }
@@ -162,11 +159,9 @@ export const setupPWAInstall = () => {
     const beforeInstallHandler = (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        //console.log('PWA install prompt available');
     };
 
     const appInstalledHandler = () => {
-        //console.log('PWA was installed');
         deferredPrompt = null;
     };
 
@@ -415,7 +410,6 @@ export const setupCapacitorListeners = (capacitorModules, app, ui, journal) => {
 
     listeners.push(
         App.addListener('appStateChange', ({ isActive }) => {
-            //console.log('App state changed. Is active:', isActive);
             if (isActive && app.isInitialized) {
                 journal.loadTodayEntry();
             } else if (!isActive && journal.hasUnsavedChanges) {
@@ -454,7 +448,6 @@ export const setupCapacitorListeners = (capacitorModules, app, ui, journal) => {
 
     listeners.push(
         App.addListener('appUrlOpen', (event) => {
-            //console.log('App opened with URL:', event.url);
             handleDeepLink(event.url, ui);
         })
     );
@@ -473,7 +466,6 @@ export const showSplashScreen = async () => {
             fadeOutDuration: 500,
             autoHide: true
         });
-        //console.log('✅ Splash screen shown');
     } catch (error) {
         console.warn('Could not show splash screen:', error);
     }
@@ -485,7 +477,6 @@ export const hideSplashScreen = async () => {
         await SplashScreen.hide({
             fadeOutDuration: 500
         });
-        //console.log('✅ Splash screen hidden');
     } catch (error) {
         console.warn('Could not hide splash screen:', error);
     }

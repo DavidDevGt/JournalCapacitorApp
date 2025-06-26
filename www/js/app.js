@@ -76,8 +76,6 @@ class DailyJournalApp {
         }
 
         try {
-            //console.log('🚀 Initializing Daily Journal App...');
-
             await this.#validateAndSetupEnvironment();
             await this.#initializeModules();
             await this.#setupUI();
@@ -190,7 +188,6 @@ class DailyJournalApp {
         return new Promise(resolve => {
             setTimeout(() => {
                 ui.hideLoading();
-                ////console.log('✅ Daily Journal App initialized successfully!');
                 this.#isInitialized = true;
                 resolve();
             }, CONSTANTS.LOADING_DELAY);
@@ -346,13 +343,7 @@ class DailyJournalApp {
      */
     destroy() {
         if (!this.#isInitialized) return;
-
-        ////console.log('🧹 Cleaning up Daily Journal App...');
-
-        // Close active modal
         this.#closeActiveModal();
-
-        // Run all cleanup tasks
         this.#cleanupTasks.forEach(cleanup => {
             try {
                 if (typeof cleanup === 'function') {
@@ -362,23 +353,15 @@ class DailyJournalApp {
                 console.warn('Cleanup task failed:', error);
             }
         });
-
-        // Remove all event listeners
         this.#eventListeners.forEach(({ element, event, handler }) => {
             element.removeEventListener(event, handler);
         });
-
-        // Cleanup modules
         if (journal && typeof journal.destroy === 'function') {
             journal.destroy();
         }
-
-        // Clear references
         this.#eventListeners.clear();
         this.#cleanupTasks.length = 0;
         this.#isInitialized = false;
-
-        ////console.log('✅ Daily Journal App cleaned up successfully');
     }
 
     // Private utility methods
@@ -597,7 +580,6 @@ class AppBootstrap {
             try {
                 const { SplashScreen } = await import('@capacitor/splash-screen');
                 await SplashScreen.hide({ fadeOutDuration: CONSTANTS.SPLASH_FADE_DURATION });
-                ////console.log('🚨 Emergency splash screen hide executed');
             } catch (error) {
                 console.warn('Emergency splash hide failed:', error);
             }

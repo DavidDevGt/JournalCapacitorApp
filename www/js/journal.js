@@ -2,10 +2,6 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { Preferences } from '@capacitor/preferences';
-import { Capacitor } from '@capacitor/core';
-
-const platform = Capacitor.getPlatform();
 
 class JournalManager {
     constructor() {
@@ -17,8 +13,6 @@ class JournalManager {
         this.journalTextarea = null;
         this.autoSaveTimeout = null;
         this.isInitialized = false;
-
-        // Auto mood detect
         this.sentimentAnalyzer = null;
         this.autoMoodTimeout = null;
         this.lastAnalyzedText = '';
@@ -123,10 +117,8 @@ class JournalManager {
 
     async initSentimentAnalyzer() {
         try {
-            // Dynamic import to avoid affecting initial performance
             const SentimentAnalyzer = (await import('./sentiment-analyzer.js')).default;
             this.sentimentAnalyzer = new SentimentAnalyzer();
-            //console.log('✅ Sentiment analyzer initialized');
         } catch (error) {
             console.warn('Could not load sentiment analyzer:', error);
         }
@@ -139,12 +131,10 @@ class JournalManager {
             return;
         }
 
-        // Cancel previous detection to avoid multiple analyses
         if (this.autoMoodTimeout) {
             clearTimeout(this.autoMoodTimeout);
         }
 
-        // Only analyze if there's enough new text
         const trimmedText = text.trim();
         if (trimmedText.length < 20 || trimmedText === this.lastAnalyzedText) {
             return;
@@ -497,7 +487,6 @@ class JournalManager {
     }
 
     async loadTodayEntry() {
-        //console.log('🔄 Cargando entrada de hoy...');
         if (!window.db || !window.db.isInitialized) return;
 
         try {
@@ -805,7 +794,6 @@ class JournalManager {
                 ]
             });
 
-            //console.log(`Notification scheduled for ${notificationTime}`);
         } catch (error) {
             console.error('Error scheduling notifications:', error);
         }
@@ -1083,7 +1071,6 @@ class JournalManager {
             }
 
             if (generated > 0) {
-                //console.log(`Generated ${generated} thumbnails for existing entries`);
                 if (window.ui) {
                     window.ui.showToast(`Optimizadas ${generated} imágenes`, 'success');
                     window.ui.loadAllEntries(); // Refresh entries list
