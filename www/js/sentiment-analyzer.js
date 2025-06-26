@@ -60,6 +60,10 @@ class SentimentAnalyzer {
         this.maxCacheSize = 100;
     }
 
+    /**
+     * Initialize the compact model for sentiment analysis.
+     * @returns {Object} The compact model.
+     */
     initCompactModel() {
         const wordProbs = new Map([
             ['positive', new Map([
@@ -85,6 +89,11 @@ class SentimentAnalyzer {
         };
     }
 
+    /**
+     * Preprocess the input text for analysis.
+     * @param {string} text - The text to preprocess.
+     * @returns {string} The preprocessed text.
+     */
     preprocessText(text) {
         if (!text) return '';
 
@@ -95,6 +104,11 @@ class SentimentAnalyzer {
             .trim();
     }
 
+    /**
+     * Calculate the heuristic score for a list of words.
+     * @param {Array<string>} words - The words to analyze.
+     * @returns {number} The calculated heuristic score.
+     */
     scoreHeuristic(words) {
         if (!words.length) return 0;
 
@@ -102,13 +116,11 @@ class SentimentAnalyzer {
         let score = 0;
         let totalWords = 0;
 
-        // Single pass a través de las palabras
         for (let i = 0; i < words.length; i++) {
             const word = words[i];
             const isNegated = negatedIndices.has(i);
             let wordScore = 0;
 
-            // Verificar categorías de sentimiento
             for (const [category, wordSet] of this.sentimentWords) {
                 if (wordSet.has(word)) {
                     switch (category) {
@@ -131,6 +143,11 @@ class SentimentAnalyzer {
         return Math.max(-1, Math.min(1, normalizedScore * intensityMod));
     }
 
+    /**
+     * Find negated words in a list of words.
+     * @param {Array<string>} words - The words to analyze.
+     * @returns {Set<number>} A set of indices for negated words.
+     */
     findNegatedWords(words) {
         const negated = new Set();
         for (let i = 0; i < words.length; i++) {
@@ -144,6 +161,11 @@ class SentimentAnalyzer {
         return negated;
     }
 
+    /**
+     * Calculate the intensity of sentiment in a list of words.
+     * @param {Array<string>} words - The words to analyze.
+     * @returns {number} The calculated intensity.
+     */
     calculateIntensity(words) {
         let modifier = 1.0;
         for (const word of words) {
@@ -156,6 +178,11 @@ class SentimentAnalyzer {
         return Math.max(0.1, Math.min(2.0, modifier));
     }
 
+    /**
+     * Predict the sentiment of a given text using Naive Bayes.
+     * @param {Array<string>} words - The words to analyze.
+     * @returns {Map<string, number>} A map with predicted sentiment probabilities.
+     */
     predictNaiveBayes(words) {
         if (!words.length) return this.getDefaultProbs();
 
@@ -176,6 +203,11 @@ class SentimentAnalyzer {
         return this.normalizeProbs(logProbs);
     }
 
+    /**
+     * Normalize log probabilities to a probability distribution.
+     * @param {Map<string, number>} logProbs 
+     * @returns {Map<string, number>} A map with normalized probabilities.
+     */
     normalizeProbs(logProbs) {
         const maxLogProb = Math.max(...logProbs.values());
         const probs = new Map();
@@ -187,7 +219,6 @@ class SentimentAnalyzer {
             total += prob;
         }
 
-        // Normalizar
         for (const [sentiment, prob] of probs) {
             probs.set(sentiment, prob / total);
         }
@@ -195,10 +226,19 @@ class SentimentAnalyzer {
         return probs;
     }
 
+    /**
+     * Get the default probabilities for sentiment classes.
+     * @returns {Map<string, number>} A map with default probabilities for positive, negative
+     */
     getDefaultProbs() {
         return new Map([['positive', 0.33], ['negative', 0.33], ['neutral', 0.34]]);
     }
 
+    /**
+     * Detect emotions in a list of words.
+     * @param {Array<string>} words - The words to analyze.
+     * @returns {Object} An object containing detected emotions and their intensities.
+     */
     detectEmotions(words) {
         if (!words.length) return {};
 
@@ -217,6 +257,11 @@ class SentimentAnalyzer {
         return emotions;
     }
 
+    /**
+     * Convert a sentiment score to an emoji representation.
+     * @param {number} score - The sentiment score.
+     * @returns {string} The corresponding emoji.
+     */
     scoreToEmoji(score) {
         if (score >= 0.4) return '😄';
         if (score >= 0.15) return '😊';
@@ -225,6 +270,11 @@ class SentimentAnalyzer {
         return '😐';
     }
 
+    /**
+     * Analyze the sentiment of a given text.
+     * @param {string} text - The text to analyze.
+     * @returns {Object} The analysis result.
+     */
     analyze(text) {
         if (!text?.trim()) return this.getDefaultResult();
 
@@ -270,6 +320,12 @@ class SentimentAnalyzer {
         return result;
     }
 
+    /**
+     * Calculate the confidence score for the sentiment analysis.
+     * @param {number} heuristicScore - The heuristic score.
+     * @param {Map<string, number>} bayesProbs - The Bayesian probabilities.
+     * @returns {number} The calculated confidence score.
+     */
     calculateConfidence(heuristicScore, bayesProbs) {
         const bayesScore = bayesProbs.get('positive') - bayesProbs.get('negative');
         const consistency = Math.max(0, 1 - Math.abs(heuristicScore - bayesScore));
@@ -277,6 +333,11 @@ class SentimentAnalyzer {
         return consistency * 0.4 + certainty * 0.6;
     }
 
+    /**
+     * Update the sentiment cache.
+     * @param {string} key - The text to cache.
+     * @param {Object} value - The analysis result to cache.
+     */
     updateCache(key, value) {
         if (this.cache.size >= this.maxCacheSize) {
             const firstKey = this.cache.keys().next().value;
@@ -285,6 +346,10 @@ class SentimentAnalyzer {
         this.cache.set(key, value);
     }
 
+    /**
+     * Get the default result structure for sentiment analysis.
+     * @returns {Object} The default result object.
+     */
     getDefaultResult() {
         return {
             mood: '😐',
@@ -301,10 +366,20 @@ class SentimentAnalyzer {
         };
     }
 
+    /**
+     * Get the mood for a given text.
+     * @param {string} text - The text to analyze.
+     * @returns {string} The detected mood emoji.
+     */
     getMood(text) {
         return this.analyze(text).mood;
     }
 
+    /**
+     * Analyze a batch of texts.
+     * @param {Array<string>} texts - The texts to analyze.
+     * @returns {Array<Object>} An array of analysis results.
+     */
     analyzeBatch(texts) {
         return texts.map(text => ({
             text: text.length > 100 ? text.substring(0, 100) + '...' : text,
@@ -312,6 +387,11 @@ class SentimentAnalyzer {
         }));
     }
 
+    /**
+     * Get statistics for a batch of texts.
+     * @param {Array<string>} texts - The texts to analyze.
+     * @returns {Object|null} An object containing statistics or null if no texts are provided.
+     */
     getStatistics(texts) {
         if (!texts?.length) return null;
 
@@ -336,10 +416,17 @@ class SentimentAnalyzer {
         };
     }
 
+    /**
+     * Clear the sentiment cache.
+     */
     clearCache() {
         this.cache.clear();
     }
 
+    /**
+     * Get performance metrics for the sentiment analyzer.
+     * @returns {Object} An object containing performance metrics.
+     */
     getPerformanceMetrics() {
         return {
             cacheSize: this.cache.size,
