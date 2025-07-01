@@ -20,15 +20,15 @@
       "style": "Dark"
     },
     "SplashScreen": {
-      "launchShowDuration": 1000,
+      "launchShowDuration": 2000,
       "launchAutoHide": true,
-      "launchFadeOutDuration": 500,
-      "backgroundColor": "#ffffff",
-      "androidSplashResourceName": "splash",
-      "androidScaleType": "CENTER_CROP",
+      "launchFadeOutDuration": 300,
+      "backgroundColor": "#6366f1",
+      "androidSplashResourceName": "splash_screen",
+      "androidScaleType": "CENTER_INSIDE",
       "showSpinner": false,
       "splashFullScreen": true,
-      "splashImmersive": true
+      "splashImmersive": false
     }
   }
 }

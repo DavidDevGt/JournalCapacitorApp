@@ -15,7 +15,7 @@
         <item name="android:background">@null</item>
     </style>
 
-    <!-- Splash Screen Theme Optimizado -->
+    <!-- Splash Screen Theme Optimizado para todos los dispositivos -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_screen</item>
         <item name="android:windowNoTitle">true</item>
@@ -25,6 +25,9 @@
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@color/splash_background</item>
         <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowIsTranslucent">false</item>
     </style>
 
 </resources>

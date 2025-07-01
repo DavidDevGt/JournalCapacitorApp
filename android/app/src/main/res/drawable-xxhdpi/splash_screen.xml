@@ -4,10 +4,10 @@
     <!-- Background color sólido -->
     <item android:drawable="@color/splash_background" />
     
-    <!-- Splash image con configuración específica para MIUI -->
+    <!-- Splash image optimizada para dispositivos de alta densidad -->
     <item 
-        android:width="200dp"
-        android:height="200dp"
+        android:width="240dp"
+        android:height="240dp"
         android:gravity="center">
         <bitmap 
             android:src="@drawable/splash"

@@ -277,31 +277,111 @@ class UIManager {
         }
     }
 
-    setupDarkMode() {
+    async setupDarkMode() {
         const toggle = document.getElementById('dark-mode-toggle');
         if (!toggle) return;
+        const savedMode = window.db ? await window.db.getSetting('darkMode') : 'false';
+        const isDark = savedMode === 'true';
+        
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+        }
         this.updateDarkModeIcon();
-        toggle.addEventListener('click', async () => {
-            const isDark = document.documentElement.classList.toggle('dark');
-            this.updateDarkModeIcon();
-            if (window.db) {
-                await window.db.setSetting('darkMode', isDark.toString());
-            }
-            try {
-                const { StatusBar } = await import('@capacitor/status-bar');
-                const { Capacitor } = await import('@capacitor/core');
-                if (Capacitor.isNativePlatform()) {
-                    await StatusBar.setStyle({
-                        style: isDark ? 'Light' : 'Dark'
-                    });
-                    await StatusBar.setBackgroundColor({
-                        color: isDark ? '#1a1a1a' : '#ffffff'
-                    });
-                }
-            } catch (error) {
-                console.warn('StatusBar not available:', error);
-            }
+
+        toggle.addEventListener('click', () => {
+            this.performOptimizedThemeSwitch();
         });
+    }
+
+    async performOptimizedThemeSwitch() {
+        this.createThemeTransitionOverlay();
+        
+        document.documentElement.classList.add('theme-transitioning');
+        
+        const isDark = document.documentElement.classList.toggle('dark');
+        this.updateDarkModeIcon();
+        
+        document.documentElement.offsetHeight;
+        
+        requestAnimationFrame(() => {
+            // Remover bloqueo de transiciones
+            document.documentElement.classList.remove('theme-transitioning');
+            
+            // Activar transición suave solo para propiedades críticas
+            document.documentElement.classList.add('theme-transition-smooth');
+            
+            // Remover overlay y limpiar después de la transición
+            setTimeout(() => {
+                this.removeThemeTransitionOverlay();
+                document.documentElement.classList.remove('theme-transition-smooth');
+            }, 120); // 120ms para transición suave y rápida
+        });
+        
+        Promise.all([
+            this.saveDarkModePreference(isDark),
+            this.updateStatusBarAsync(isDark)
+        ]).catch(() => {});
+    }
+
+    createThemeTransitionOverlay() {
+        const overlay = document.createElement('div');
+        overlay.id = 'theme-transition-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.02);
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 60ms ease-out;
+        `;
+        document.body.appendChild(overlay);
+        
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+        });
+    }
+
+    removeThemeTransitionOverlay() {
+        const overlay = document.getElementById('theme-transition-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 60);
+        }
+    }
+
+    async saveDarkModePreference(isDark) {
+        if (window.db) {
+            try {
+                await window.db.setSetting('darkMode', isDark.toString());
+            } catch (error) {
+                // Silenciar errores
+            }
+        }
+    }
+
+    async updateStatusBarAsync(isDark) {
+        try {
+            const { StatusBar } = await import('@capacitor/status-bar');
+            const { Capacitor } = await import('@capacitor/core');
+            if (Capacitor.isNativePlatform()) {
+                await StatusBar.setStyle({
+                    style: isDark ? 'Light' : 'Dark'
+                });
+                await StatusBar.setBackgroundColor({
+                    color: isDark ? '#1a1a1a' : '#ffffff'
+                });
+            }
+        } catch (error) {
+            // Silenciar errores
+        }
     }
 
     async loadDarkModePreference() {
