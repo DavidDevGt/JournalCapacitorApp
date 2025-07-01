@@ -15,15 +15,13 @@
         <item name="android:background">@null</item>
     </style>
 
-    <!-- Splash Screen Theme Corregido -->
+    <!-- Splash Screen Theme Simplificado -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_screen</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
-        <item name="android:windowFullscreen">false</item>
         <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
     </style>
 
 </resources>

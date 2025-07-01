@@ -49,7 +49,7 @@ export class CalendarManager {
     async render() {
         if (!this.#calendarGrid || !this.#currentMonthEl) return;
 
-        this.#currentMonthEl.textContent = formatDate(this.#currentMonth, 'month');
+        this.#currentMonthEl.textContent = formatDate(this.#currentMonth, 'es-ES', {}, 'month');
 
         this.#calendarGrid.innerHTML = '';
         const frag = document.createDocumentFragment();
@@ -172,6 +172,3 @@ export class CalendarManager {
         this.setCurrentMonth(new Date(this.#currentMonth.setMonth(this.#currentMonth.getMonth() + 1)));
     }
 }
-
-// Utiliza la función de helpers para formatear la fecha localmente
-// (Asegúrate de que CalendarManager reciba el UIManager con la función corregida)

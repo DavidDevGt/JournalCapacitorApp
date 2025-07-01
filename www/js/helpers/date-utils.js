@@ -36,10 +36,17 @@ export function toISODateTime(date) {
     return date.toISOString();
 }
 
-export function formatDate(date, locale = 'es-ES', options = {}) {
+export function formatDate(date, locale = 'es-ES', options = {}, format) {
     locale = locale || 'es-ES';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (!d || isNaN(d)) return '';
+    if (format === 'month') {
+        const mes = d.toLocaleString(locale, { month: 'long' });
+        const mesCapitalizado = mes.charAt(0).toUpperCase() + mes.slice(1);
+        return `${mesCapitalizado} ${d.getFullYear()}`;
+    }
     const defaultOptions = { day: 'numeric', month: 'long', year: 'numeric' };
-    return date.toLocaleDateString(locale, { ...defaultOptions, ...options });
+    return d.toLocaleDateString(locale, { ...defaultOptions, ...options });
 }
 
 export function formatDateTime(date, locale = 'es-ES', options = {}) {

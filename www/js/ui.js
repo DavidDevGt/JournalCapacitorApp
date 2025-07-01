@@ -67,30 +67,8 @@ class UIManager {
     setupDateDisplay() {
         const dateEl = document.getElementById('current-date');
         if (dateEl) {
-            dateEl.textContent = this.formatDate(this.currentDate, 'full');
+            dateEl.textContent = formatDate(this.currentDate, 'es-ES', {}, 'full');
         }
-    }
-
-    formatDate(date, format = 'short') {
-        const options = {
-            short: {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            },
-            full: {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            },
-            month: {
-                year: 'numeric',
-                month: 'long'
-            }
-        };
-        return new Intl.DateTimeFormat('es-ES', options[format]).format(date);
     }
 
     formatDateForStorage(date) {
@@ -177,87 +155,88 @@ class UIManager {
         }
     }
 
-createEntryCard(entry) {
-    const date = new Date(entry.date);
-    const formattedDate = this.formatDate(date, 'short');
-    const preview = entry.content.substring(0, 180) + (entry.content.length > 180 ? '...' : '');
+    createEntryCard(entry) {
+        const date = new Date(entry.date);
+        const formattedDate = formatDate(date, 'es-ES', {}, 'short');
+        const preview = entry.content.substring(0, 180) + (entry.content.length > 180 ? '...' : '');
 
-    const moodDisplay = entry.mood ? `
-    <div class="mood-indicator flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 rounded-2xl flex items-center justify-center shadow-lg border border-amber-200/60 dark:border-amber-700/60 hover:scale-110 transition-transform duration-200">
-        <span class="text-2xl filter drop-shadow-sm">${entry.mood}</span>
-    </div>` : '';
+        const moodDisplay = entry.mood ? `
+        <div class="mood-indicator flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 rounded-2xl flex items-center justify-center shadow-lg border border-amber-200/60 dark:border-amber-700/60 hover:scale-110 transition-transform duration-200">
+            <span class="text-2xl filter drop-shadow-sm">${entry.mood}</span>
+        </div>` : '';
 
-    const photoPath = entry.photo_path || entry.photoPath;
-    const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;
+        const photoPath = entry.photo_path || entry.photoPath;
+        const thumbnailPath = entry.thumbnail_path || entry.thumbnailPath || photoPath;
 
-    const wordCount = entry.content ? entry.content.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
-    
-    const wordCountDisplay = wordCount > 0 ? `
-    <div class="flex items-center gap-2 text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-600/40">
-        <span class="material-icons text-sm">edit_note</span>
-        <span class="text-xs font-medium">${wordCount} ${wordCount === 1 ? 'palabra' : 'palabras'}</span>
-    </div>` : `
-    <div class="flex items-center gap-2 text-slate-500 bg-slate-800/40 px-3 py-1.5 rounded-full border border-slate-600/30">
-        <span class="material-icons text-sm">article</span>
-        <span class="text-xs font-medium">Sin contenido</span>
-    </div>`;
-
-    const readingTime = Math.max(1, Math.ceil(wordCount / 200));
-    const readingTimeDisplay = wordCount > 0 ? `
-    <div class="flex items-center gap-1.5 text-slate-500">
-        <span class="material-icons text-sm">schedule</span>
-        <span class="text-xs">${readingTime} min</span>
-    </div>` : '';
-
-    const imageDisplay = thumbnailPath ? `
-    <div class="relative group/image">
-        <img src="${thumbnailPath}" alt="Foto adjunta" class="w-12 h-12 object-cover rounded-2xl border border-slate-600/70 shadow-lg transition-all duration-300 group-hover/image:scale-105" />
-        <div class="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full border-2 border-slate-800 shadow-sm">
-            <div class="absolute inset-0.5 bg-white/20 rounded-full animate-pulse"></div>
-        </div>
-        <div class="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-200"></div>
-    </div>` : '';
-
-    return `
-    <div class="journal-card group relative bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md rounded-3xl shadow-xl border border-slate-700/60 p-6 mb-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:border-slate-600/80 hover:from-slate-800 hover:to-slate-900 focus-within:ring-2 focus-within:ring-blue-500/60 focus-within:ring-offset-2 focus-within:ring-offset-slate-900">
-        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        const wordCount = entry.content ? entry.content.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
         
-        <div class="relative flex items-start justify-between mb-5">
-            <div class="flex items-center gap-3">
-                <span class="text-xs font-bold text-slate-200 bg-gradient-to-r from-slate-700/80 to-slate-600/80 px-3 py-1.5 rounded-full border border-slate-600/60 shadow-sm backdrop-blur-sm">
-                    ${formattedDate}
-                </span>
-                ${readingTimeDisplay}
+        const wordCountDisplay = wordCount > 0 ? `
+        <div class="flex items-center gap-2 text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-600/40">
+            <span class="material-icons text-sm">edit_note</span>
+            <span class="text-xs font-medium">${wordCount} ${wordCount === 1 ? 'palabra' : 'palabras'}</span>
+        </div>` : `
+        <div class="flex items-center gap-2 text-slate-500 bg-slate-800/40 px-3 py-1.5 rounded-full border border-slate-600/30">
+            <span class="material-icons text-sm">article</span>
+            <span class="text-xs font-medium">Sin contenido</span>
+        </div>`;
+
+        const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+        const readingTimeDisplay = wordCount > 0 ? `
+        <div class="flex items-center gap-1.5 text-slate-500">
+            <span class="material-icons text-sm">schedule</span>
+            <span class="text-xs">${readingTime} min</span>
+        </div>` : '';
+
+        const imageDisplay = thumbnailPath ? `
+        <div class="relative group/image">
+            <img src="${thumbnailPath}" alt="Foto adjunta" class="w-12 h-12 object-cover rounded-2xl border border-slate-600/70 shadow-lg transition-all duration-300 group-hover/image:scale-105" />
+            <div class="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full border-2 border-slate-800 shadow-sm">
+                <div class="absolute inset-0.5 bg-white/20 rounded-full animate-pulse"></div>
             </div>
-            <div class="flex items-center gap-3">
-                ${moodDisplay}
-                ${imageDisplay}
-                <button class="entry-menu-btn opacity-70 hover:opacity-100 focus:opacity-100 transition-all duration-200 p-2.5 rounded-2xl hover:bg-slate-700/60 focus:bg-slate-700/60 hover:scale-110 focus:scale-110 group/btn" title="Más opciones">
-                    <span class="material-icons text-lg text-slate-400 group-hover/btn:text-slate-200 transition-colors duration-200">more_vert</span>
+            <div class="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-200"></div>
+        </div>` : '';
+
+        return `
+        <div class="journal-card group relative bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md rounded-3xl shadow-xl border border-slate-700/60 p-6 mb-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:border-slate-600/80 hover:from-slate-800 hover:to-slate-900 focus-within:ring-2 focus-within:ring-blue-500/60 focus-within:ring-offset-2 focus-within:ring-offset-slate-900">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            
+            <div class="relative flex items-start justify-between mb-5">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold text-slate-200 bg-gradient-to-r from-slate-700/80 to-slate-600/80 px-3 py-1.5 rounded-full border border-slate-600/60 shadow-sm backdrop-blur-sm">
+                        ${formattedDate}
+                    </span>
+                    ${readingTimeDisplay}
+                </div>
+                <div class="flex items-center gap-3">
+                    ${moodDisplay}
+                    ${imageDisplay}
+                    <button class="entry-menu-btn opacity-70 hover:opacity-100 focus:opacity-100 transition-all duration-200 p-2.5 rounded-2xl hover:bg-slate-700/60 focus:bg-slate-700/60 hover:scale-110 focus:scale-110 group/btn" title="Más opciones">
+                        <span class="material-icons text-lg text-slate-400 group-hover/btn:text-slate-200 transition-colors duration-200">more_vert</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="relative mb-6">
+                <p class="text-slate-100 leading-relaxed text-sm md:text-base line-clamp-4 group-hover:text-white transition-colors duration-300 font-light tracking-wide">
+                    ${preview}
+                </p>
+                <div class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-800/95 to-transparent pointer-events-none opacity-60 group-hover:opacity-40 transition-opacity duration-300"></div>
+            </div>
+            
+            <div class="relative flex items-center justify-between pt-4 border-t border-slate-700/50 group-hover:border-slate-600/60 transition-colors duration-300">
+                ${wordCountDisplay}
+                
+                <button class="entry-view-btn flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:from-blue-700 focus:to-blue-800 text-white text-xs font-bold rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 focus:scale-105 focus:ring-2 focus:ring-blue-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 group/viewbtn">
+                    <span class="material-icons text-sm group-hover/viewbtn:scale-110 transition-transform duration-200">visibility</span>
+                    <span>Ver entrada</span>
                 </button>
             </div>
-        </div>
-        
-        <div class="relative mb-6">
-            <p class="text-slate-100 leading-relaxed text-sm md:text-base line-clamp-4 group-hover:text-white transition-colors duration-300 font-light tracking-wide">
-                ${preview}
-            </p>
-            <div class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-800/95 to-transparent pointer-events-none opacity-60 group-hover:opacity-40 transition-opacity duration-300"></div>
-        </div>
-        
-        <div class="relative flex items-center justify-between pt-4 border-t border-slate-700/50 group-hover:border-slate-600/60 transition-colors duration-300">
-            ${wordCountDisplay}
             
-            <button class="entry-view-btn flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:from-blue-700 focus:to-blue-800 text-white text-xs font-bold rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 focus:scale-105 focus:ring-2 focus:ring-blue-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 group/viewbtn">
-                <span class="material-icons text-sm group-hover/viewbtn:scale-110 transition-transform duration-200">visibility</span>
-                <span>Ver entrada</span>
-            </button>
+            <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-600/40 to-transparent"></div>
         </div>
-        
-        <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-600/40 to-transparent"></div>
-    </div>
-`;
-}
+    `;
+    }
+
     setupSearch() {
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
