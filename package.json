@@ -14,7 +14,13 @@
     "open:android": "npx cap open android",
     "open:ios": "npx cap open ios",
     "android": "npm run build && npx cap sync android",
-    "ios": "npm run build && npx cap sync ios"
+    "ios": "npm run build && npx cap sync ios",
+    "android:build": "cd android && .\\gradlew.bat assembleDebug",
+    "android:build-release": "cd android && .\\gradlew.bat assembleRelease",
+    "android:install": "adb install -r android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+    "android:logs": "adb logcat --pid=$(adb shell pidof com.daviddevgt.journalapp)",
+    "mobile:build-install": "powershell -ExecutionPolicy Bypass -File .\\build-and-install.ps1",
+    "mobile:dev-tools": "powershell -ExecutionPolicy Bypass -File .\\dev-tools.ps1"
   },
   "keywords": [
     "journaling",
