@@ -1,3 +1,5 @@
+import { formatDate, formatDateForStorage, fromISODate } from '../helpers.js';
+
 export class VirtualScrollManager {
     constructor(uiManager) {
         this.ui = uiManager;
@@ -181,8 +183,8 @@ export class VirtualScrollManager {
         itemElement.style.transition = 'transform 0.25s cubic-bezier(.4,2,.6,1), box-shadow 0.2s';
         itemElement.setAttribute('data-index', index);
 
-        const date = new Date(entry.date);
-        const formattedDate = this.ui.formatDate(date, 'short');
+        const date = fromISODate(entry.date);
+        const formattedDate = formatDate(date, 'short');
         const preview = entry.content.substring(0, 100) + (entry.content.length > 100 ? '...' : '');
 
         const moodDisplay = entry.mood ? `
@@ -208,7 +210,7 @@ export class VirtualScrollManager {
 
         itemElement.innerHTML = `
         <div class="entry-card-compact group relative bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 cursor-pointer transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-600 h-full" 
-            onclick="ui.selectDate(new Date('${entry.date}'))"
+            onclick="ui.selectDate('${entry.date}')"
             style="min-height: 80px;">
             
             <div class="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-l-lg"></div>
@@ -327,7 +329,7 @@ export class VirtualScrollManager {
     }
 
     getTimeAgo(date) {
-        const now = new Date();
+        const now = fromISODate(new Date().toISOString());
         const diffTime = Math.abs(now - date);
         const diffMinutes = Math.floor(diffTime / (1000 * 60));
         const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
@@ -431,7 +433,7 @@ export class VirtualScrollManager {
     }
 
     scrollToDate(date) {
-        const dateStr = this.ui.formatDateForStorage(new Date(date));
+        const dateStr = formatDateForStorage(fromISODate(date));
         const index = this.filteredEntries.findIndex(entry => entry.date === dateStr);
         if (index !== -1) {
             this.scrollToIndex(index);

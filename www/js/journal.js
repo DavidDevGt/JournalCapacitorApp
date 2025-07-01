@@ -2,6 +2,7 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { formatDate, formatDateForStorage, fromISODate } from './helpers.js';
 
 class JournalManager {
     constructor() {
@@ -81,7 +82,7 @@ class JournalManager {
         if (todayNavBtn) {
             todayNavBtn.addEventListener('click', async () => {
                 if (window.ui && typeof window.ui.selectDate === 'function') {
-                    window.ui.selectDate(new Date());
+                    window.ui.selectDate(fromISODate(new Date().toISOString().split('T')[0]));
                 } else {
                     await this.loadTodayEntry(); // Fallback mínimo
                 }

@@ -2,6 +2,7 @@ import { Toast as CapacitorToast } from '@capacitor/toast';
 import { VirtualScrollManager } from './components/VirtualScrollManager';
 import { CalendarManager } from './components/CalendarManager';
 import { NavigationManager } from './components/NavigationManager';
+import { formatDate, formatDateForStorage, fromISODate } from './helpers.js';
 
 class UIManager {
     constructor() {
@@ -101,20 +102,21 @@ class UIManager {
     }
 
     selectDate(date) {
-        this.currentDate = new Date(date);
+        const dateObj = fromISODate(date);
+        this.currentDate = dateObj;
         this.switchView('today');
         this.setupDateDisplay();
 
         if (window.stateManager) {
             const currentStateDate = window.stateManager.getState().currentDate;
-            const newDateStr = this.formatDateForStorage(date);
-            const currentStateStr = this.formatDateForStorage(currentStateDate);
+            const newDateStr = this.formatDateForStorage(dateObj);
+            const currentStateStr = this.formatDateForStorage(fromISODate(currentStateDate));
             if (newDateStr !== currentStateStr) {
-                window.stateManager.setCurrentDate(date);
+                window.stateManager.setCurrentDate(dateObj);
             }
         }
         if (window.journal) {
-            window.journal.loadEntryForDate(this.formatDateForStorage(date));
+            window.journal.loadEntryForDate(this.formatDateForStorage(dateObj));
         }
     }
 
