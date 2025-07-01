@@ -3,8 +3,9 @@
     <!-- Splash Screen Theme para Android 12+ -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/splash_icon_background</item>
-        <item name="postSplashScreenTheme">@style/AppTheme</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
+        <item name="android:windowSplashScreenBrandingImage">@null</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources> 
