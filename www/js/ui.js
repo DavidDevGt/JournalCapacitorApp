@@ -394,7 +394,13 @@ class UIManager {
             this.calendarManager.setupNavigation();
         }
     }
+
+    formatDate(date, format = 'short') {
+        // Usa la función importada formatDate de helpers.js
+        return formatDate(date, 'es-ES', {}, format);
+    }
 }
 
 const ui = new UIManager();
+window.ui = ui;
 export default ui;
