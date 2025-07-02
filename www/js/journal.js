@@ -82,7 +82,9 @@ class JournalManager {
         if (todayNavBtn) {
             todayNavBtn.addEventListener('click', async () => {
                 if (window.ui && typeof window.ui.selectDate === 'function') {
-                    window.ui.selectDate(fromISODate(new Date().toISOString().split('T')[0]));
+                    // Usar fecha actual en hora local para evitar desfase
+                    const today = new Date();
+                    window.ui.selectDate(today);
                 } else {
                     await this.loadTodayEntry(); // Fallback mínimo
                 }

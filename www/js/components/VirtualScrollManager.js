@@ -329,7 +329,7 @@ export class VirtualScrollManager {
     }
 
     getTimeAgo(date) {
-        const now = fromISODate(new Date().toISOString());
+        const now = new Date(); // Usar fecha actual en hora local
         const diffTime = Math.abs(now - date);
         const diffMinutes = Math.floor(diffTime / (1000 * 60));
         const diffHours = Math.floor(diffTime / (1000 * 60 * 60));

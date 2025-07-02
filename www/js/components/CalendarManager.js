@@ -87,7 +87,7 @@ export class CalendarManager {
             }
         }
 
-        const today = this.#normalizeDate(fromISODate(new Date().toISOString()));
+        const today = this.#normalizeDate(new Date()); // Usar fecha actual en hora local
         const dateIterator = new Date(startDate);
 
         for (let i = 0; i < CalendarManager.WEEKS_TO_SHOW * CalendarManager.DAYS_IN_WEEK; i++) {
