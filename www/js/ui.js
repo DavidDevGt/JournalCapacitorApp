@@ -262,6 +262,52 @@ class UIManager {
         }
     }
 
+    /**
+     * Realiza una búsqueda y muestra los resultados
+     * @param {string} query - Término de búsqueda
+     */
+    async performSearch(query) {
+        try {
+            // Cambiar a la vista de entradas si no está activa
+            if (this.currentView !== 'entries') {
+                this.switchView('entries');
+            }
+
+            if (!window.db) {
+                console.error('Database not available for search');
+                return;
+            }
+
+            // Si no hay query, mostrar todas las entradas
+            if (!query?.trim()) {
+                const allEntries = await window.db.getAllEntries();
+                this.virtualScrollManager.loadEntries(allEntries);
+                return;
+            }
+
+            // Realizar búsqueda
+            const searchResults = await window.db.searchEntries(query.trim());
+            
+            // Mostrar los resultados filtrados
+            this.virtualScrollManager.filterEntries(searchResults);
+
+            // Opcional: Mostrar un mensaje si no hay resultados
+            if (searchResults.length === 0) {
+                console.log(`No se encontraron resultados para: "${query}"`);
+            }
+
+        } catch (error) {
+            console.error('Error performing search:', error);
+            // En caso de error, mostrar todas las entradas
+            try {
+                const allEntries = await window.db.getAllEntries();
+                this.virtualScrollManager.loadEntries(allEntries);
+            } catch (fallbackError) {
+                console.error('Error loading fallback entries:', fallbackError);
+            }
+        }
+    }
+
     updateDarkModeIcon() {
         const lightIcon = document.getElementById('light-mode-icon');
         const darkIcon = document.getElementById('dark-mode-icon');
