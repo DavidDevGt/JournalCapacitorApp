@@ -1,6 +1,3 @@
-/**
- * Manages navigation between views with gesture support and Material Design animations
- */
 export class NavigationManager {
     #ui;
     #views = ['today', 'calendar', 'entries'];

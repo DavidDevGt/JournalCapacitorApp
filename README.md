@@ -29,7 +29,7 @@ Una app elegante para escribir tu diario diario. Diseño limpio, funciona sin in
 git clone https://github.com/DavidDevGt/JournalCapacitorApp.git
 cd JournalCapacitorApp
 npm install
-npx serve www  # Ve en navegador
+npm run dev # Ve en navegador
 ```
 
 ### Para móviles
