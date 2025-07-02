@@ -2690,3 +2690,34 @@ textarea:focus:is(.dark *) {
         transition: none !important;
     }
 }
+
+/* Transición suave optimizada para cambio de tema */
+.theme-transition-smooth {
+    transition: none !important;
+}
+
+.theme-transition-smooth *,
+.theme-transition-smooth *::before,
+.theme-transition-smooth *::after {
+    transition: background-color 120ms cubic-bezier(0.2, 0, 0.2, 1),
+                color 120ms cubic-bezier(0.2, 0, 0.2, 1),
+                border-color 120ms cubic-bezier(0.2, 0, 0.2, 1),
+                box-shadow 120ms cubic-bezier(0.2, 0, 0.2, 1) !important;
+}
+
+/* Excluir elementos que no necesitan transición */
+.theme-transition-smooth .material-icons,
+.theme-transition-smooth img,
+.theme-transition-smooth svg,
+.theme-transition-smooth canvas {
+    transition: none !important;
+}
+
+/* Optimización para elementos con transform */
+.theme-transition-smooth [class*="translate"],
+.theme-transition-smooth [class*="scale"],
+.theme-transition-smooth [class*="rotate"] {
+    transition: background-color 120ms cubic-bezier(0.2, 0, 0.2, 1),
+                color 120ms cubic-bezier(0.2, 0, 0.2, 1),
+                border-color 120ms cubic-bezier(0.2, 0, 0.2, 1) !important;
+}
