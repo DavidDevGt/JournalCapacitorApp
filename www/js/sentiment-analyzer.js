@@ -1,14 +1,17 @@
+import { App } from '@capacitor/app';
+import { APP_CONSTANTS } from './constants/index.js';
+
 class SentimentAnalyzer {
     constructor() {
         this.config = {
-            updateDelay: 300,
-            minWords: 2,
-            confidenceThreshold: 0.25,
-            intensifierWeight: 0.3,
-            negationWindow: 3,
-            smoothing: 0.01,
-            heuristicWeight: 0.7,
-            bayesWeight: 0.3
+            updateDelay: APP_CONSTANTS.UPDATE_DELAY_MS,
+            minWords: APP_CONSTANTS.MIN_WORDS,
+            confidenceThreshold: APP_CONSTANTS.CONFIDENCE_THRESHOLD,
+            intensifierWeight: APP_CONSTANTS.INTENSIFIER_WEIGHT,
+            negationWindow: APP_CONSTANTS.NEGATION_WINDOW,
+            smoothing: APP_CONSTANTS.SMOOTHING,
+            heuristicWeight: APP_CONSTANTS.HEURISTIC_WEIGHT,
+            bayesWeight: APP_CONSTANTS.BAYES_WEIGHT
         };
 
         this.sentimentWords = new Map([

@@ -1,0 +1,13 @@
+export const APP_CONSTANTS = {
+    // Sentiment analysis config
+    UPDATE_DELAY_MS: 300,
+    MIN_WORDS: 2,
+    CONFIDENCE_THRESHOLD: 0.25,
+    INTENSIFIER_WEIGHT: 0.3,
+    NEGATION_WINDOW: 3,
+    SMOOTHING: 0.01,
+    HEURISTIC_WEIGHT: 0.7,
+    BAYES_WEIGHT: 0.3,
+
+    
+}
