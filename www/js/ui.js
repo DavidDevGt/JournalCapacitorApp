@@ -522,8 +522,33 @@ class UIManager {
     }
 
     formatDate(date, format = 'short') {
-        // Usa la función importada formatDate de helpers.js
-        return formatDate(date, 'es-ES', {}, format);
+        if (format === 'short') {
+            return formatDate(date, 'es-ES', { month: 'short', day: 'numeric' });
+        } else if (format === 'full') {
+            return formatDate(date, 'es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        return formatDate(date, 'es-ES');
+    }
+
+    /**
+     * Manejar notificaciones de eliminación de entradas
+     * @param {string} deletedDate - Fecha de la entrada eliminada
+     */
+    handleEntryDeletion(deletedDate) {
+        // Verificar si la entrada eliminada es la que está actualmente seleccionada
+        const currentDate = this.formatDateForStorage(this.currentDate);
+        
+        if (deletedDate === currentDate) {
+            // Si se eliminó la entrada actual, limpiar la UI
+            this.setupDateDisplay();
+            console.log('Entrada actual eliminada, UI actualizada');
+        }
+        
+        // También actualizar la lista de entradas si está visible
+        if (this.currentView === 'entries' && this.virtualScrollManager) {
+            // La lista ya se actualiza automáticamente en VirtualScrollManager
+            console.log('Lista de entradas actualizada después de eliminación');
+        }
     }
 }
 

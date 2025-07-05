@@ -307,6 +307,7 @@ export class VirtualScrollManager {
             }
             return;
         }
+        
         try {
             if (window.db && typeof window.db.deleteEntry === 'function') {
                 const result = await window.db.deleteEntry(entry.date);
@@ -314,9 +315,17 @@ export class VirtualScrollManager {
                     throw (result && result.error) || new Error('Error desconocido al eliminar');
                 }
             }
+            
+            // Actualizar arrays locales
             this.filteredEntries.splice(index, 1);
             this.allEntries = this.allEntries.filter(e => e.date !== entry.date);
+            
+            // Re-renderizar la lista
             this.renderItems();
+            
+            // Notificar a otros componentes sobre la eliminación
+            this.#notifyEntryDeletion(entry.date);
+            
             if (window.ui && typeof window.ui.showToast === 'function') {
                 window.ui.showToast('Entrada eliminada', 'success');
             }
@@ -325,6 +334,27 @@ export class VirtualScrollManager {
             if (window.ui && typeof window.ui.showToast === 'function') {
                 window.ui.showToast('Error al eliminar la entrada', 'error');
             }
+        }
+    }
+
+    /**
+     * Notificar a otros componentes sobre la eliminación de una entrada
+     * @private
+     */
+    #notifyEntryDeletion(deletedDate) {
+        // Disparar evento personalizado para que otros componentes se enteren
+        const deletionEvent = new CustomEvent('entryDeleted', {
+            detail: { deletedDate }
+        });
+        document.dispatchEvent(deletionEvent);
+        
+        // También notificar directamente a componentes específicos
+        if (window.journal && typeof window.journal.handleEntryDeletion === 'function') {
+            window.journal.handleEntryDeletion(deletedDate);
+        }
+        
+        if (window.ui && typeof window.ui.handleEntryDeletion === 'function') {
+            window.ui.handleEntryDeletion(deletedDate);
         }
     }
 

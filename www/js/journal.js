@@ -90,6 +90,8 @@ class JournalManager {
                 }
             });
         }
+
+        this.#setupDeletionListeners();
     }
 
     async selectMood(mood) {
@@ -1190,6 +1192,33 @@ class JournalManager {
         } catch (error) {
             console.error('Error generating missing thumbnails:', error);
         }
+    }
+
+    /**
+     * Manejar notificaciones de eliminación de entradas
+     * @param {string} deletedDate - Fecha de la entrada eliminada
+     */
+    handleEntryDeletion(deletedDate) {
+        // Verificar si la entrada eliminada es la que está actualmente cargada
+        const currentDate = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : new Date().toISOString().split('T')[0];
+        
+        if (deletedDate === currentDate) {
+            // Si se eliminó la entrada actual, limpiar el estado
+            this.loadEntryData(null);
+            console.log('Entrada actual eliminada, estado limpiado');
+        }
+    }
+
+    /**
+     * Setup event listeners for entry deletion notifications
+     * @private
+     */
+    #setupDeletionListeners() {
+        // Escuchar eventos de eliminación de entradas
+        document.addEventListener('entryDeleted', (event) => {
+            const { deletedDate } = event.detail;
+            this.handleEntryDeletion(deletedDate);
+        });
     }
 }
 

@@ -257,6 +257,13 @@ export class NavigationManager {
             case 'entries':
                 this.#ui.loadAllEntries?.();
                 break;
+            case 'main':
+                if (window.journal && typeof window.journal.loadTodayEntry === 'function') {
+                    setTimeout(() => {
+                        window.journal.loadTodayEntry();
+                    }, 100);
+                }
+                break;
         }
     }
 
