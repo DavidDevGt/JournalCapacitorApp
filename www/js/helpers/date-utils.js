@@ -1,15 +1,14 @@
 export function fromISODate(str) {
-    if (!str) return new Date(NaN); // Maneja undefined/null
-    if (str instanceof Date) return str; // Ya es Date
+    if (!str) return new Date(NaN);
+    if (str instanceof Date) return str;
     if (typeof str === 'string') {
         if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
             const [year, month, day] = str.split('-').map(Number);
             return new Date(year, month - 1, day);
         }
-        // Si es un string ISO completo
         return new Date(str);
     }
-    return new Date(NaN); // Fallback para tipos inesperados
+    return new Date(NaN);
 }
 
 export function fromISODateTime(str) {
