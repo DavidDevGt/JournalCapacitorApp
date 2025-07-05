@@ -29,10 +29,10 @@ Write-Host "🛠️ Compilando APK ($BuildType)..." -ForegroundColor Blue
 Set-Location android
 if ($BuildType -eq "release") {
     .\gradlew.bat assembleRelease
-    $apkPath = ".\app\build\outputs\apk\release\app-release-unsigned.apk"
+    $apkPath = "android\app\build\outputs\apk\release\app-release-unsigned.apk"
 } else {
     .\gradlew.bat assembleDebug
-    $apkPath = ".\app\build\outputs\apk\debug\app-debug.apk"
+    $apkPath = "android\app\build\outputs\apk\debug\app-debug.apk"
 }
 Set-Location ..
 
@@ -41,7 +41,16 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 4. Verificar dispositivos conectados
+# 4. Verificar que el APK existe
+Write-Host "🔍 Verificando archivo APK..." -ForegroundColor Blue
+if (-not (Test-Path $apkPath)) {
+    Write-Host "❌ No se encontró el archivo APK en: $apkPath" -ForegroundColor Red
+    Write-Host "   Verifica que la compilación fue exitosa" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "✅ APK encontrado: $apkPath" -ForegroundColor Green
+
+# 5. Verificar dispositivos conectados
 Write-Host "📱 Verificando dispositivos conectados..." -ForegroundColor Blue
 $devices = & "C:\Users\josue\AppData\Local\Android\Sdk\platform-tools\adb.exe" devices
 $deviceLines = $devices | Where-Object { $_ -match "device$" }
@@ -55,7 +64,7 @@ if ($deviceLines.Count -eq 0) {
 Write-Host "✅ Dispositivos encontrados:" -ForegroundColor Green
 $deviceLines | ForEach-Object { Write-Host "   $($_)" -ForegroundColor Cyan }
 
-# 5. Instalar APK
+# 6. Instalar APK
 Write-Host "🚀 Instalando APK..." -ForegroundColor Blue
 & "C:\Users\josue\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r $apkPath
 if ($LASTEXITCODE -ne 0) {
@@ -65,7 +74,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "✅ APK instalada correctamente!" -ForegroundColor Green
 
-# 6. Lanzar la aplicación (opcional)
+# 7. Lanzar la aplicación (opcional)
 if ($Launch) {
     Write-Host "🏃 Lanzando aplicación..." -ForegroundColor Blue
     & "C:\Users\josue\AppData\Local\Android\Sdk\platform-tools\adb.exe" shell monkey -p com.daviddevgt.journalapp -c android.intent.category.LAUNCHER 1
