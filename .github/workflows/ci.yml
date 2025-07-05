@@ -24,7 +24,7 @@ jobs:
         run: npm ci
       
       - name: Validate conventional commits
-        run: npx commitlint --edit $(git rev-parse HEAD)
+        run: npx commitlint --edit ${{ github.event.head_commit.id }}
 
   test:
     runs-on: ubuntu-latest
