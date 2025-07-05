@@ -702,7 +702,8 @@ export const showSettingsModal = async () => {
             importFile.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file && window.journal) {
-                    window.journal.importEntries(file);
+                    // Usar el método legacy para compatibilidad con input file
+                    window.journal.importEntriesFromFile(file);
                     closeModal();
                 }
             });

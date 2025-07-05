@@ -832,91 +832,63 @@ class JournalManager {
     }
 
     /**
-     * Solicita permisos de almacenamiento si es necesario
-     * @private
+     * Exporta las entradas del diario usando Storage Access Framework (SAF)
+     * Permite al usuario elegir dónde guardar el archivo
      */
-    async _requestStoragePermissions() {
-        try {
-            const { Permissions } = await import('@capacitor/core');
-            
-            // Verificar si ya tenemos permisos
-            const permissionStatus = await Permissions.query({ name: 'storage' });
-            
-            if (permissionStatus.state === 'granted') {
-                return true;
-            }
-            
-            // Solicitar permisos
-            const result = await Permissions.request({ name: 'storage' });
-            return result.state === 'granted';
-        } catch (error) {
-            console.warn('Error requesting storage permissions:', error);
-            // En Android, intentar usar el FileProvider
-            return true;
-        }
-    }
-
     async exportEntries() {
-        if (!window.db) return;
+        if (!window.db) {
+            console.warn('Database not available for export');
+            return;
+        }
 
         try {
-            // Solicitar permisos de almacenamiento
-            await this._requestStoragePermissions();
-            
+            // Mostrar indicador de carga
+            if (window.ui) {
+                window.ui.showToast('Preparando backup...', 'info', 1000);
+            }
+
+            // Obtener datos de la base de datos
             const data = await window.db.exportData();
+            if (!data) {
+                throw new Error('No hay datos para exportar');
+            }
 
+            // Generar nombre de archivo con timestamp
             const now = new Date();
-            const timestamp = now.toISOString().replace(/[:.]/g, '-');
+            const timestamp = now.toISOString().replace(/[:.]/g, '-').split('T')[0];
             const fileName = `journal-backup-${timestamp}.json`;
-
             const jsonString = JSON.stringify(data, null, 2);
 
+            // Importar módulos de Capacitor
             const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
 
-            // Intentar primero con el directorio de documentos de la app
+            // Intentar usar SAF para que el usuario elija ubicación
             try {
-                await Filesystem.writeFile({
-                    path: fileName,
-                    data: jsonString,
-                    directory: Directory.Documents,
-                    encoding: Encoding.UTF8
-                });
+                const result = await Filesystem.pickDirectory();
 
-                if (window.ui) {
-                    window.ui.showToast(`Backup guardado en Documentos/${fileName}`, 'success');
-                }
-                return;
-            } catch (documentsError) {
-                console.warn('Error writing to Documents directory:', documentsError);
-                
-                // Fallback: intentar con el directorio de datos de la app
-                try {
+                if (result && result.uri) {
+                    // Usuario eligió ubicación con SAF
                     await Filesystem.writeFile({
-                        path: fileName,
+                        path: `${result.uri}/${fileName}`,
                         data: jsonString,
-                        directory: Directory.Data,
                         encoding: Encoding.UTF8
                     });
 
                     if (window.ui) {
-                        window.ui.showToast(`Backup guardado en Datos/${fileName}`, 'success');
+                        window.ui.showToast(`Backup guardado como ${fileName}`, 'success');
                     }
                     return;
-                } catch (dataError) {
-                    console.warn('Error writing to Data directory:', dataError);
-                    
-                    // Último fallback: usar el directorio de cache
-                    await Filesystem.writeFile({
-                        path: fileName,
-                        data: jsonString,
-                        directory: Directory.Cache,
-                        encoding: Encoding.UTF8
-                    });
-
+                } else {
+                    // Usuario canceló la selección de directorio
                     if (window.ui) {
-                        window.ui.showToast(`Backup guardado en Cache/${fileName}`, 'success');
+                        window.ui.showToast('Exportación cancelada', 'info');
                     }
+                    return;
                 }
+            } catch (safError) {
+                console.warn('SAF no disponible, usando fallback:', safError);
+
+                await this._exportToAppDirectory(fileName, jsonString, Filesystem, Directory, Encoding);
             }
         } catch (error) {
             console.error('Error exporting entries:', error);
@@ -926,7 +898,151 @@ class JournalManager {
         }
     }
 
-    async importEntries(file) {
+    /**
+     * Método auxiliar para exportar al directorio de la aplicación
+     * @private
+     */
+    async _exportToAppDirectory(fileName, jsonString, Filesystem, Directory, Encoding) {
+        try {
+            await Filesystem.writeFile({
+                path: fileName,
+                data: jsonString,
+                directory: Directory.Documents,
+                encoding: Encoding.UTF8
+            });
+
+            if (window.ui) {
+                window.ui.showToast(`Backup guardado en Documentos/${fileName}`, 'success');
+            }
+        } catch (documentsError) {
+            console.warn('Error writing to Documents directory:', documentsError);
+
+            // Último fallback: directorio de datos
+            try {
+                await Filesystem.writeFile({
+                    path: fileName,
+                    data: jsonString,
+                    directory: Directory.Data,
+                    encoding: Encoding.UTF8
+                });
+
+                if (window.ui) {
+                    window.ui.showToast(`Backup guardado en Datos/${fileName}`, 'success');
+                }
+            } catch (dataError) {
+                console.error('Error writing to Data directory:', dataError);
+                throw new Error('No se pudo guardar el backup en ningún directorio');
+            }
+        }
+    }
+
+    /**
+     * Importa entradas del diario usando Storage Access Framework (SAF)
+     * Permite al usuario seleccionar el archivo a importar
+     */
+    async importEntries() {
+        if (!window.db) {
+            if (window.ui) {
+                window.ui.showToast('No se pudo acceder a la base de datos', 'error');
+            }
+            return;
+        }
+
+        try {
+            // Importar módulos de Capacitor
+            const { Filesystem } = await import('@capacitor/filesystem');
+
+            // Usar SAF para seleccionar archivo
+            const result = await Filesystem.pickFiles({
+                multiple: false,
+                readData: true,
+                accept: 'application/json'
+            });
+
+            if (!result || !result.files || result.files.length === 0) {
+                // Usuario canceló la selección
+                if (window.ui) {
+                    window.ui.showToast('Importación cancelada', 'info');
+                }
+                return;
+            }
+
+            const file = result.files[0];
+
+            // Validar archivo
+            await this._validateImportFile(file);
+
+            // Procesar datos
+            const data = await this._processImportData(file);
+
+            // Importar a la base de datos
+            const importResult = await window.db.importData(data);
+
+            if (importResult.success) {
+                await this.loadTodayEntry();
+                if (window.ui) {
+                    const message = importResult.message || 'Datos importados correctamente';
+                    window.ui.showToast(message, 'success');
+                    window.ui.loadAllEntries();
+                }
+            } else {
+                throw new Error(importResult.error || 'Error desconocido durante la importación');
+            }
+        } catch (error) {
+            console.error('Error importing entries:', error);
+            if (window.ui) {
+                window.ui.showToast(error.message || 'Error al importar los datos', 'error');
+            }
+        }
+    }
+
+    /**
+     * Valida el archivo de importación
+     * @private
+     */
+    async _validateImportFile(file) {
+        // Validar tamaño (máximo 10MB)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+            throw new Error(`El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo: 10MB`);
+        }
+
+        // Validar tipo de archivo
+        if (!file.name.endsWith('.json')) {
+            throw new Error('Solo se permiten archivos JSON (.json)');
+        }
+
+        // Validar que no esté vacío
+        if (!file.data || !file.data.trim()) {
+            throw new Error('El archivo está vacío');
+        }
+    }
+
+    /**
+     * Procesa los datos del archivo de importación
+     * @private
+     */
+    async _processImportData(file) {
+        let data;
+        try {
+            data = JSON.parse(file.data);
+        } catch (parseError) {
+            throw new Error('Archivo JSON inválido: ' + parseError.message);
+        }
+
+        // Validar estructura básica
+        if (!data || typeof data !== 'object') {
+            throw new Error('El archivo no contiene datos válidos');
+        }
+
+        return data;
+    }
+
+    /**
+     * Método legacy para compatibilidad con input file
+     * @deprecated Usar importEntries() en su lugar
+     */
+    async importEntriesFromFile(file) {
         if (!window.db || !file) {
             if (window.ui) {
                 window.ui.showToast('No se pudo acceder a la base de datos o archivo', 'error');
@@ -935,28 +1051,19 @@ class JournalManager {
         }
 
         try {
-            const maxSize = 10 * 1024 * 1024; // 10MB
-            if (file.size > maxSize) {
-                throw new Error(`El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo: 10MB`);
-            }
+            // Validar archivo
+            await this._validateImportFile({
+                size: file.size,
+                name: file.name,
+                data: await file.text()
+            });
 
-            if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-                throw new Error('Solo se permiten archivos JSON (.json)');
-            }
+            // Procesar datos
+            const data = await this._processImportData({
+                data: await file.text()
+            });
 
-            const text = await file.text();
-
-            if (!text.trim()) {
-                throw new Error('El archivo está vacío');
-            }
-
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (parseError) {
-                throw new Error('Archivo JSON inválido: ' + parseError.message);
-            }
-
+            // Importar a la base de datos
             const result = await window.db.importData(data);
 
             if (result.success) {
