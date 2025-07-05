@@ -1,18 +1,31 @@
-/**
- * NotificationService - Servicio para manejar notificaciones locales
- * 
- * Este servicio encapsula toda la funcionalidad relacionada con notificaciones
- * de Capacitor, proporcionando una interfaz limpia y reutilizable.
- * 
- * Características:
- * - Inicialización automática de permisos
- * - Programación de notificaciones diarias
- * - Gestión de configuración de notificaciones
- * - Manejo de errores centralizado
- * - Integración con la base de datos local
- */
-
 import { LocalNotifications } from '@capacitor/local-notifications';
+
+const PHRASES_BY_TIME = {
+    morning: [
+        '¡Buenos días! ¿Cómo comenzó tu día? 🌅',
+        '¿Qué esperas de este día? Escríbelo 📝',
+        '¿Cuál es tu propósito para hoy? 🎯',
+        'Comienza tu día reflexionando sobre tus metas 💭'
+    ],
+    afternoon: [
+        '¿Cómo va tu día hasta ahora? 🌞',
+        'Pausa un momento y reflexiona sobre tu mañana 🤔',
+        '¿Qué has aprendido hoy? Compártelo en tu diario 📚'
+    ],
+    evening: [
+        '¿Cómo fue tu día? Es hora de escribir en tu diario 📖',
+        'A veces uno tiene las ideas desordenadas, es hora de escribir y ordenarlas 📝',
+        '¿Qué te gustaría recordar de este día? 💫',
+        '¿Qué desafío superaste hoy? 🏆',
+        'Termina tu día con gratitud, ¿por qué estás agradecido? 🙏'
+    ],
+    night: [
+        'Antes de dormir, reflexiona sobre tu día ⭐',
+        '¿Qué fue lo mejor de hoy? No lo olvides 💭',
+        'Escribe sobre tus sueños y metas 💫',
+        '¿Qué aprendiste sobre ti mismo hoy? 🪞'
+    ]
+};
 
 class NotificationService {
     constructor() {
@@ -20,10 +33,32 @@ class NotificationService {
         this.notificationId = 1;
     }
 
+    /**
+     * Obtiene una frase aleatoria basada en la hora actual
+     * @returns {string} - Frase aleatoria
+     */
+    async getRandomPhrase() {
+        const currentTime = new Date().getHours();
+
+        switch (true) {
+            case currentTime >= 5 && currentTime < 12:
+                return PHRASES_BY_TIME.morning[Math.floor(Math.random() * PHRASES_BY_TIME.morning.length)];
+            case currentTime >= 12 && currentTime < 18:
+                return PHRASES_BY_TIME.afternoon[Math.floor(Math.random() * PHRASES_BY_TIME.afternoon.length)];
+            case currentTime >= 18 && currentTime < 23:
+                return PHRASES_BY_TIME.evening[Math.floor(Math.random() * PHRASES_BY_TIME.evening.length)];
+            default:
+                return PHRASES_BY_TIME.night[Math.floor(Math.random() * PHRASES_BY_TIME.night.length)];
+        }
+    }
+
+    /**
+     * Inicializa el servicio de notificaciones
+     */
     async init() {
         try {
             const permissions = await LocalNotifications.requestPermissions();
-            
+
             if (permissions.display === 'granted') {
                 this.isInitialized = true;
                 await this.scheduleNotifications();
@@ -36,6 +71,9 @@ class NotificationService {
         }
     }
 
+    /**
+     * Programar notificaciones diarias
+     */
     async scheduleNotifications() {
         if (!this.isInitialized) {
             console.warn('NotificationService no inicializado');
@@ -51,7 +89,6 @@ class NotificationService {
                 return;
             }
 
-            // Cancelar notificaciones existentes
             await LocalNotifications.cancel({ notifications: [{ id: this.notificationId }] });
 
             // Programar recordatorio diario
@@ -61,7 +98,7 @@ class NotificationService {
                 notifications: [
                     {
                         title: 'Daily Journal',
-                        body: '¿Cómo fue tu día? Es hora de escribir en tu diario 📖',
+                        body: await this.getRandomPhrase(),
                         id: this.notificationId,
                         schedule: {
                             on: {
@@ -85,6 +122,10 @@ class NotificationService {
         }
     }
 
+    /**
+     * Activar o desactivar notificaciones
+     * @param {boolean} enabled - true para activar, false para desactivar
+     */
     async toggleNotifications(enabled) {
         if (!window.db) {
             console.warn('Base de datos no disponible');
@@ -107,6 +148,10 @@ class NotificationService {
         }
     }
 
+    /**
+     * Configurar la hora de las notificaciones
+     * @param {string} time - La hora en formato HH:MM
+     */
     async setNotificationTime(time) {
         if (!window.db) {
             console.warn('Base de datos no disponible');
@@ -123,9 +168,13 @@ class NotificationService {
         }
     }
 
+    /**
+     * Obtener la hora de las notificaciones
+     * @returns {string} - La hora en formato HH:MM
+     */
     async getNotificationTime() {
         if (!window.db) return '20:00';
-        
+
         try {
             return await window.db.getSetting('notificationTime', '20:00') || '20:00';
         } catch (error) {
@@ -134,9 +183,13 @@ class NotificationService {
         }
     }
 
+    /**
+     * Obtener el estado de las notificaciones
+     * @returns {string} - true si están habilitadas, false si están deshabilitadas
+     */
     async getNotificationsEnabled() {
         if (!window.db) return 'true';
-        
+
         try {
             return await window.db.getSetting('notificationsEnabled', 'true') || 'true';
         } catch (error) {
@@ -145,6 +198,11 @@ class NotificationService {
         }
     }
 
+    /**
+     * Mostrar un mensaje en la interfaz
+     * @param {string} message - El mensaje a mostrar
+     * @param {string} type - El tipo de mensaje (success, info, error)
+     */
     showMessage(message, type) {
         if (window.ui && typeof window.ui.showToast === 'function') {
             window.ui.showToast(message, type);
@@ -153,6 +211,9 @@ class NotificationService {
         }
     }
 
+    /**
+     * Cancelar todas las notificaciones
+     */
     async cancelAllNotifications() {
         try {
             await LocalNotifications.cancel({ notifications: [{ id: this.notificationId }] });
@@ -162,6 +223,10 @@ class NotificationService {
         }
     }
 
+    /**
+     * Obtener las notificaciones pendientes
+     * @returns {Array} - Array de notificaciones pendientes
+     */
     async getPendingNotifications() {
         try {
             const notifications = await LocalNotifications.getPending();
@@ -172,6 +237,10 @@ class NotificationService {
         }
     }
 
+    /**
+     * Verificar si se han concedido permisos de notificación
+     * @returns {boolean} - true si se han concedido permisos, false si no
+     */
     async checkPermissions() {
         try {
             const permissions = await LocalNotifications.checkPermissions();
@@ -182,6 +251,10 @@ class NotificationService {
         }
     }
 
+    /**
+     * Solicitar permisos de notificación
+     * @returns {boolean} - true si se han concedido permisos, false si no
+     */
     async requestPermissions() {
         try {
             const permissions = await LocalNotifications.requestPermissions();
