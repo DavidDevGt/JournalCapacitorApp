@@ -1,0 +1,112 @@
+digraph NotificationFlow {
+    rankdir=TB;
+    node [shape=box, style=filled, color="#e0e0e0", fontname="Arial"];
+
+    %% Inicialización del Servicio
+    AppStart [label="🚀 Inicio de la App", fillcolor="#4CAF50", color="#2E7D32", fontcolor="#fff"];
+    InitNotificationService [label="🔔 Inicializar\nNotificationService", fillcolor="#2196F3", color="#1565C0", fontcolor="#fff"];
+    RequestPermissions [label="📋 Solicitar Permisos\nLocalNotifications", fillcolor="#FF9800", color="#E65100", fontcolor="#fff"];
+    
+    %% Verificación de Permisos
+    CheckPermissions [label="✅ ¿Permisos\nConcedidos?", shape=diamond, fillcolor="#FF9800", color="#E65100", fontcolor="#fff"];
+    PermissionsDenied [label="❌ Permisos Denegados\nLog Warning", fillcolor="#F44336", color="#C62828", fontcolor="#fff"];
+    PermissionsGranted [label="✅ Permisos Concedidos\nServicio Activo", fillcolor="#4CAF50", color="#2E7D32", fontcolor="#fff"];
+    
+    %% Configuración de Notificaciones
+    GetNotificationSettings [label="⚙️ Obtener Configuración\n(Enabled, Time)", fillcolor="#9C27B0", color="#6A1B9A", fontcolor="#fff"];
+    CheckNotificationsEnabled [label="🔔 ¿Notificaciones\nHabilitadas?", shape=diamond, fillcolor="#FF9800", color="#E65100", fontcolor="#fff"];
+    NotificationsDisabled [label="⏸️ Notificaciones\nDeshabilitadas", fillcolor="#9E9E9E", color="#616161", fontcolor="#fff"];
+    
+    %% Programación de Notificaciones
+    GetNotificationTime [label="🕐 Obtener Hora\nConfigurada", fillcolor="#00BCD4", color="#00838F", fontcolor="#fff"];
+    GetRandomPhrase [label="💭 Obtener Frase\nAleatoria por Hora", fillcolor="#00BCD4", color="#00838F", fontcolor="#fff"];
+    ScheduleNotification [label="📅 Programar\nNotificación Diaria", fillcolor="#4CAF50", color="#2E7D32", fontcolor="#fff"];
+    
+    %% Manejo de Frases por Hora
+    CheckCurrentTime [label="🕐 Determinar\nPeríodo del Día", fillcolor="#FF9800", color="#E65100", fontcolor="#fff"];
+    MorningPhrases [label="🌅 Frases de\nMañana", fillcolor="#FFEB3B", color="#F57F17", fontcolor="#000"];
+    AfternoonPhrases [label="🌞 Frases de\nTarde", fillcolor="#FF9800", color="#E65100", fontcolor="#fff"];
+    EveningPhrases [label="🌆 Frases de\nNoche", fillcolor="#9C27B0", color="#6A1B9A", fontcolor="#fff"];
+    NightPhrases [label="🌙 Frases de\nMadrugada", fillcolor="#3F51B5", color="#283593", fontcolor="#fff"];
+    
+    %% Interacción del Usuario
+    UserInteraction [label="👆 Usuario Interactúa\ncon Notificaciones", fillcolor="#9C27B0", color="#6A1B9A", fontcolor="#fff"];
+    ToggleNotifications [label="🔄 Activar/Desactivar\nNotificaciones", fillcolor="#FF5722", color="#D84315", fontcolor="#fff"];
+    ChangeNotificationTime [label="🕐 Cambiar Hora\nde Notificación", fillcolor="#FF5722", color="#D84315", fontcolor="#fff"];
+    
+    %% Procesamiento de Cambios
+    UpdateSettings [label="💾 Actualizar\nConfiguración", fillcolor="#00BCD4", color="#00838F", fontcolor="#fff"];
+    RescheduleNotifications [label="📅 Reprogramar\nNotificaciones", fillcolor="#4CAF50", color="#2E7D32", fontcolor="#fff"];
+    CancelNotifications [label="❌ Cancelar\nNotificaciones", fillcolor="#F44336", color="#C62828", fontcolor="#fff"];
+    
+    %% Notificación Recibida
+    NotificationReceived [label="📱 Usuario Recibe\nNotificación", fillcolor="#4CAF50", color="#2E7D32", fontcolor="#fff"];
+    HandleNotificationTap [label="👆 Manejar Tap\nen Notificación", fillcolor="#2196F3", color="#1565C0", fontcolor="#fff"];
+    OpenApp [label="🚀 Abrir App\nen Fecha Actual", fillcolor="#4CAF50", color="#2E7D32", fontcolor="#fff"];
+    
+    %% Cleanup
+    AppDestroy [label="💀 App se Destruye", fillcolor="#F44336", color="#C62828", fontcolor="#fff"];
+    CleanupNotifications [label="🧹 Limpiar\nNotificaciones", fillcolor="#9E9E9E", color="#616161", fontcolor="#fff"];
+
+    // Conexiones principales
+    AppStart -> InitNotificationService;
+    InitNotificationService -> RequestPermissions;
+    RequestPermissions -> CheckPermissions;
+    
+    CheckPermissions -> PermissionsDenied [label="❌ No"];
+    CheckPermissions -> PermissionsGranted [label="✅ Sí"];
+    
+    PermissionsGranted -> GetNotificationSettings;
+    GetNotificationSettings -> CheckNotificationsEnabled;
+    
+    CheckNotificationsEnabled -> NotificationsDisabled [label="❌ No"];
+    CheckNotificationsEnabled -> GetNotificationTime [label="✅ Sí"];
+    
+    GetNotificationTime -> CheckCurrentTime;
+    CheckCurrentTime -> MorningPhrases [label="5-12h"];
+    CheckCurrentTime -> AfternoonPhrases [label="12-18h"];
+    CheckCurrentTime -> EveningPhrases [label="18-23h"];
+    CheckCurrentTime -> NightPhrases [label="23-5h"];
+    
+    MorningPhrases -> GetRandomPhrase;
+    AfternoonPhrases -> GetRandomPhrase;
+    EveningPhrases -> GetRandomPhrase;
+    NightPhrases -> GetRandomPhrase;
+    
+    GetRandomPhrase -> ScheduleNotification;
+    
+    // Interacciones del usuario
+    UserInteraction -> ToggleNotifications;
+    UserInteraction -> ChangeNotificationTime;
+    
+    ToggleNotifications -> UpdateSettings;
+    ChangeNotificationTime -> UpdateSettings;
+    
+    UpdateSettings -> RescheduleNotifications;
+    UpdateSettings -> CancelNotifications;
+    
+    // Recepción de notificación
+    ScheduleNotification -> NotificationReceived;
+    NotificationReceived -> HandleNotificationTap;
+    HandleNotificationTap -> OpenApp;
+    
+    // Cleanup
+    AppDestroy -> CleanupNotifications;
+    
+    // Estilos
+    classDef startEnd fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#fff
+    classDef process fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    classDef decision fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    classDef error fill:#F44336,stroke:#C62828,stroke-width:2px,color:#fff
+    classDef ui fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    classDef data fill:#00BCD4,stroke:#00838F,stroke-width:2px,color:#fff
+    classDef service fill:#FF5722,stroke:#D84315,stroke-width:2px,color:#fff
+    
+    class AppStart,AppDestroy startEnd
+    class InitNotificationService,RequestPermissions,GetNotificationSettings,GetNotificationTime,GetRandomPhrase,ScheduleNotification,UpdateSettings,RescheduleNotifications,CancelNotifications,HandleNotificationTap,OpenApp,CleanupNotifications process
+    class CheckPermissions,CheckNotificationsEnabled,CheckCurrentTime decision
+    class PermissionsDenied,NotificationsDisabled error
+    class UserInteraction,ToggleNotifications,ChangeNotificationTime,NotificationReceived ui
+    class PermissionsGranted,MorningPhrases,AfternoonPhrases,EveningPhrases,NightPhrases data
+    class service service
+} 

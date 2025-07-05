@@ -1,0 +1,102 @@
+digraph PhotoManagementFlow {
+    rankdir=TB;
+    node [shape=box, style=filled, color="#e0e0e0", fontname="Arial"];
+
+    %% Inicio del Proceso
+    UserTakesPhoto [label="📷 Usuario Toma Foto", fillcolor="#4CAF50", color="#2E7D32", fontcolor="#fff"];
+    ShowPhotoSourceModal [label="📱 Mostrar Modal\nSelección Fuente", fillcolor="#2196F3", color="#1565C0", fontcolor="#fff"];
+    
+    %% Selección de Fuente
+    PhotoSourceChoice [label="📸 ¿Fuente de\nFoto?", shape=diamond, fillcolor="#FF9800", color="#E65100", fontcolor="#fff"];
+    CameraSource [label="📱 Cámara", fillcolor="#9C27B0", color="#6A1B9A", fontcolor="#fff"];
+    GallerySource [label="🖼️ Galería", fillcolor="#9C27B0", color="#6A1B9A", fontcolor="#fff"];
+    
+    %% Captura de Foto
+    TakePhoto [label="📸 Capturar Foto\ncon Capacitor Camera", fillcolor="#2196F3", color="#1565C0", fontcolor="#fff"];
+    SelectFromGallery [label="🖼️ Seleccionar\nde Galería", fillcolor="#2196F3", color="#1565C0", fontcolor="#fff"];
+    
+    %% Procesamiento de Foto
+    ProcessPhotoData [label="🔄 Procesar\nDatos de Foto", fillcolor="#00BCD4", color="#00838F", fontcolor="#fff"];
+    ValidatePhoto [label="✅ ¿Foto\nVálida?", shape=diamond, fillcolor="#FF9800", color="#E65100", fontcolor="#fff"];
+    PhotoError [label="❌ Error en\nFoto", fillcolor="#F44336", color="#C62828", fontcolor="#fff"];
+    
+    %% Almacenamiento
+    StorePhotoData [label="💾 Almacenar\nDatos de Foto", fillcolor="#00BCD4", color="#00838F", fontcolor="#fff"];
+    GenerateThumbnail [label="🖼️ Generar\nThumbnail", fillcolor="#FF5722", color="#D84315", fontcolor="#fff"];
+    StoreThumbnail [label="💾 Almacenar\nThumbnail", fillcolor="#00BCD4", color="#00838F", fontcolor="#fff"];
+    
+    %% Visualización
+    DisplayPhoto [label="🖼️ Mostrar Foto\nen UI", fillcolor="#9C27B0", color="#6A1B9A", fontcolor="#fff"];
+    UpdateUI [label="🎨 Actualizar\nInterfaz", fillcolor="#9C27B0", color="#6A1B9A", fontcolor="#fff"];
+    
+    %% Gestión de Thumbnails
+    CheckMissingThumbnails [label="🔍 Verificar\nThumbnails Faltantes", fillcolor="#FF9800", color="#E65100", fontcolor="#fff"];
+    GenerateMissingThumbnails [label="🖼️ Generar\nThumbnails Faltantes", fillcolor="#FF5722", color="#D84315", fontcolor="#fff"];
+    
+    %% Compartir Foto
+    ShareWithPhoto [label="📤 Compartir\ncon Foto", fillcolor="#2196F3", color="#1565C0", fontcolor="#fff"];
+    ProcessPhotoForSharing [label="🔄 Procesar Foto\npara Compartir", fillcolor="#00BCD4", color="#00838F", fontcolor="#fff"];
+    CreateTempFile [label="📁 Crear Archivo\nTemporal", fillcolor="#FF5722", color="#D84315", fontcolor="#fff"];
+    ExecuteShare [label="📤 Ejecutar\nCompartir", fillcolor="#4CAF50", color="#2E7D32", fontcolor="#fff"];
+    
+    %% Eliminación
+    RemovePhoto [label="🗑️ Eliminar\nFoto", fillcolor="#F44336", color="#C62828", fontcolor="#fff"];
+    ClearPhotoData [label="🧹 Limpiar\nDatos de Foto", fillcolor="#9E9E9E", color="#616161", fontcolor="#fff"];
+    UpdateUIAfterRemoval [label="🎨 Actualizar UI\nSin Foto", fillcolor="#9C27B0", color="#6A1B9A", fontcolor="#fff"];
+    
+    %% Cleanup
+    CleanupTempFiles [label="🧹 Limpiar\nArchivos Temporales", fillcolor="#9E9E9E", color="#616161", fontcolor="#fff"];
+
+    // Conexiones principales
+    UserTakesPhoto -> ShowPhotoSourceModal;
+    ShowPhotoSourceModal -> PhotoSourceChoice;
+    
+    PhotoSourceChoice -> CameraSource [label="📱 Cámara"];
+    PhotoSourceChoice -> GallerySource [label="🖼️ Galería"];
+    
+    CameraSource -> TakePhoto;
+    GallerySource -> SelectFromGallery;
+    
+    TakePhoto -> ProcessPhotoData;
+    SelectFromGallery -> ProcessPhotoData;
+    
+    ProcessPhotoData -> ValidatePhoto;
+    ValidatePhoto -> PhotoError [label="❌ No"];
+    ValidatePhoto -> StorePhotoData [label="✅ Sí"];
+    
+    StorePhotoData -> GenerateThumbnail;
+    GenerateThumbnail -> StoreThumbnail;
+    StoreThumbnail -> DisplayPhoto;
+    DisplayPhoto -> UpdateUI;
+    
+    // Gestión de thumbnails faltantes
+    UpdateUI -> CheckMissingThumbnails;
+    CheckMissingThumbnails -> GenerateMissingThumbnails;
+    
+    // Compartir con foto
+    ShareWithPhoto -> ProcessPhotoForSharing;
+    ProcessPhotoForSharing -> CreateTempFile;
+    CreateTempFile -> ExecuteShare;
+    ExecuteShare -> CleanupTempFiles;
+    
+    // Eliminación
+    RemovePhoto -> ClearPhotoData;
+    ClearPhotoData -> UpdateUIAfterRemoval;
+    
+    // Estilos
+    classDef startEnd fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#fff
+    classDef process fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    classDef decision fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    classDef error fill:#F44336,stroke:#C62828,stroke-width:2px,color:#fff
+    classDef ui fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    classDef data fill:#00BCD4,stroke:#00838F,stroke-width:2px,color:#fff
+    classDef service fill:#FF5722,stroke:#D84315,stroke-width:2px,color:#fff
+    
+    class UserTakesPhoto startEnd
+    class ShowPhotoSourceModal,TakePhoto,SelectFromGallery,ProcessPhotoData,StorePhotoData,StoreThumbnail,ProcessPhotoForSharing,CreateTempFile,ExecuteShare,ClearPhotoData,CleanupTempFiles process
+    class PhotoSourceChoice,ValidatePhoto decision
+    class PhotoError error
+    class CameraSource,GallerySource,DisplayPhoto,UpdateUI,ShareWithPhoto,RemovePhoto,UpdateUIAfterRemoval ui
+    class GenerateThumbnail,CheckMissingThumbnails,GenerateMissingThumbnails data
+    class service service
+} 

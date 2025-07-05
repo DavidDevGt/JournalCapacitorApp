@@ -9,14 +9,25 @@ digraph SentimentAnalysisFlow {
     Tokenize [label="✂️ Tokenize Words"];
     CheckMinWords [label="🔍 ¿Min. Words >= Threshold?", shape=diamond];
     ReturnDefault [label="⚪ Return Default Result", fillcolor="#ffcccc"];
+    
+    %% Configuración de Sensibilidad
+    CheckSensitivity [label="⚙️ Obtener Configuración\nSensibilidad", fillcolor="#e6f3ff"];
+    SetConfidenceThreshold [label="📏 Ajustar Threshold\nBasado en Sensibilidad", fillcolor="#e6f3ff"];
+    
     ScoreHeuristic [label="🧮 Heuristic Scoring\n(SentimentWords, Negaciones, Intensificadores)"];
     ScoreBayes [label="📊 Bayes Prediction\n(Naive Bayes)"];
     DetectEmotions [label="❤️ Detect Emotions\n(keyword matching)"];
     CombineScores [label="⚖️ Combine Scores\n(0.7 Heuristic + 0.3 Bayes)"];
     CalculateConfidence [label="📏 Calculate Confidence"];
+    
+    %% Verificación de Selección Manual
+    CheckManualSelection [label="👆 ¿Selección Manual\nActiva?", shape=diamond, fillcolor="#ffe6cc"];
+    SkipAutoDetection [label="⏭️ Saltar Detección\nAutomática", fillcolor="#ffe6cc"];
+    
     MapEmoji [label="😊 Map Score to Emoji"];
     BuildResult [label="🧱 Build Final Result"];
     SaveCache [label="💾 Save in Cache"];
+    CleanupCache [label="🧹 Limpiar Cache\nSi excede límite", fillcolor="#f0f0f0"];
     ReturnResult [label="📤 Return Final Result", fillcolor="#ccccff"];
 
     // Connections
@@ -26,13 +37,23 @@ digraph SentimentAnalysisFlow {
     Preprocess -> Tokenize;
     Tokenize -> CheckMinWords;
     CheckMinWords -> ReturnDefault [label="❌ No"];
-    CheckMinWords -> ScoreHeuristic [label="✅ Sí"];
+    CheckMinWords -> CheckSensitivity [label="✅ Sí"];
+    
+    CheckSensitivity -> SetConfidenceThreshold;
+    SetConfidenceThreshold -> ScoreHeuristic;
+    
     ScoreHeuristic -> ScoreBayes;
     ScoreBayes -> DetectEmotions;
     DetectEmotions -> CombineScores;
     CombineScores -> CalculateConfidence;
-    CalculateConfidence -> MapEmoji;
+    CalculateConfidence -> CheckManualSelection;
+    
+    CheckManualSelection -> SkipAutoDetection [label="✅ Sí"];
+    CheckManualSelection -> MapEmoji [label="❌ No"];
+    
+    SkipAutoDetection -> ReturnResult;
     MapEmoji -> BuildResult;
     BuildResult -> SaveCache;
-    SaveCache -> ReturnResult;
+    SaveCache -> CleanupCache;
+    CleanupCache -> ReturnResult;
 }

@@ -8,113 +8,155 @@ graph TD
     E --> G[🗄️ Base de Datos]
     E --> H[🎨 UI]
     E --> I[📝 Journal]
+    E --> J[🔔 Servicio de Notificaciones]
+    E --> K[🌐 Servicio de Red]
     
-    F --> J[⚙️ Configurar Listeners de Capacitor]
-    G --> K[💾 Conectar BD]
-    H --> L[🌙 Cargar Preferencias Dark Mode]
-    I --> M[📖 Preparar Sistema de Escritura]
+    F --> L[⚙️ Configurar Listeners de Capacitor]
+    G --> M[💾 Conectar BD]
+    H --> N[🌙 Cargar Preferencias Dark Mode]
+    I --> O[📖 Preparar Sistema de Escritura]
+    J --> P[🔔 Solicitar Permisos de Notificación]
+    K --> Q[🌐 Detectar Estado de Conectividad]
     
-    J --> N[🎯 Configurar UI Core]
-    K --> N
-    L --> N
-    M --> N
+    L --> R[🎯 Configurar UI Core]
+    M --> R
+    N --> R
+    O --> R
+    P --> R
+    Q --> R
     
-    N --> O[📅 Navegación de Calendario]
-    N --> P[🔍 Sistema de Búsqueda]
-    N --> Q[🌙 Toggle Dark Mode]
-    N --> R[⌨️ Atajos de Teclado]
-    N --> S[📋 Menú Principal]
+    R --> S[📅 Navegación de Calendario]
+    R --> T[🔍 Sistema de Búsqueda]
+    R --> U[🌙 Toggle Dark Mode]
+    R --> V[⌨️ Atajos de Teclado]
+    R --> W[📋 Menú Principal]
+    R --> X[📷 Funcionalidades de Cámara]
+    R --> Y[🔔 Configurar Notificaciones]
+    R --> Z[🌐 Monitorear Conectividad]
     
-    O --> T[🎧 Event Listeners]
-    P --> T
-    Q --> T
-    R --> T
-    S --> T
+    S --> AA[🎧 Event Listeners]
+    T --> AA
+    U --> AA
+    V --> AA
+    W --> AA
+    X --> AA
+    Y --> AA
+    Z --> AA
     
-    T --> U[📱 PWA Features]
-    U --> V[📲 Instalación PWA]
-    U --> W[📶 Detección Offline]
+    AA --> BB[📱 PWA Features]
+    BB --> CC[📲 Instalación PWA]
+    BB --> DD[📶 Detección Offline]
     
-    V --> X[🎉 Finalizar Inicialización]
-    W --> X
+    CC --> EE[🎉 Finalizar Inicialización]
+    DD --> EE
     
-    X --> Y[🚀 App Lista]
-    Y --> Z[🔄 Ciclo de Vida Activo]
+    EE --> FF[🚀 App Lista]
+    FF --> GG[🔄 Ciclo de Vida Activo]
     
     %% Flujo de Interacciones Principales
-    Z --> AA{Usuario Interactúa}
-    AA -->|Menu| BB[📋 Mostrar Menú]
-    AA -->|Escribir| CC[✍️ Editor de Texto]
-    AA -->|Buscar| DD[🔍 Buscar Entradas]
-    AA -->|Navegar| EE[📅 Cambiar Fecha]
+    GG --> HH{Usuario Interactúa}
+    HH -->|Menu| II[📋 Mostrar Menú]
+    HH -->|Escribir| JJ[✍️ Editor de Texto]
+    HH -->|Buscar| KK[🔍 Buscar Entradas]
+    HH -->|Navegar| LL[📅 Cambiar Fecha]
+    HH -->|Foto| MM[📷 Tomar/Seleccionar Foto]
+    HH -->|Compartir| NN[📤 Compartir Entrada]
     
-    BB --> FF{Opción del Menú}
-    FF -->|Stats| GG[📊 Mostrar Estadísticas]
-    FF -->|Settings| HH[⚙️ Configuraciones]
-    FF -->|Export| II[📤 Exportar Datos]
-    FF -->|About| JJ[ℹ️ Información]
+    II --> OO{Opción del Menú}
+    OO -->|Stats| PP[📊 Mostrar Estadísticas]
+    OO -->|Settings| QQ[⚙️ Configuraciones]
+    OO -->|Export| RR[📤 Exportar Datos]
+    OO -->|Import| SS[📥 Importar Datos]
+    OO -->|About| TT[ℹ️ Información]
     
-    CC --> KK[💾 Autoguardado]
-    DD --> LL[📋 Resultados Filtrados]
-    EE --> MM[🔄 Actualizar Vista]
+    JJ --> UU[💾 Autoguardado]
+    JJ --> VV[🧠 Análisis Automático de Sentimientos]
+    KK --> WW[📋 Resultados Filtrados]
+    LL --> XX[🔄 Actualizar Vista]
+    MM --> YY[📸 Procesar Foto]
+    NN --> ZZ[📤 Preparar Datos para Compartir]
     
-    GG --> NN[📊 Calcular Stats del Journal]
-    HH --> OO[⚙️ Modal de Configuración]
-    II --> PP[📁 Generar Archivo de Exportación]
-    JJ --> QQ[ℹ️ Modal Informativo]
+    PP --> AAA[📊 Calcular Stats del Journal]
+    QQ --> BBB[⚙️ Modal de Configuración]
+    RR --> CCC[📁 Generar Archivo de Exportación]
+    SS --> DDD[📁 Procesar Archivo de Importación]
+    TT --> EEE[ℹ️ Modal Informativo]
     
-    KK --> RR[🗄️ Persistir en BD]
-    LL --> SS[🎨 Renderizar UI]
-    MM --> TT[📅 Actualizar Calendario]
+    UU --> FFF[🗄️ Persistir en BD]
+    VV --> GGG[😊 Actualizar Estado de Ánimo]
+    WW --> HHH[🎨 Renderizar UI]
+    XX --> III[📅 Actualizar Calendario]
+    YY --> JJJ[🖼️ Generar Thumbnail]
+    ZZ --> KKK[📤 Ejecutar Compartir]
     
     %% Gestión de Estados y Errores
-    NN --> UU[📱 Modal de Stats]
-    OO --> VV[💾 Guardar Preferencias]
-    PP --> WW[💾 Descargar Archivo]
-    QQ --> XX[📱 Modal About]
+    AAA --> LLL[📱 Modal de Stats]
+    BBB --> MMM[💾 Guardar Preferencias]
+    CCC --> NNN[💾 Descargar Archivo]
+    DDD --> OOO[📥 Importar y Validar Datos]
+    EEE --> PPP[📱 Modal About]
     
-    RR --> YY{¿Error de BD?}
-    YY -->|❌ Sí| ZZ[🚨 Mostrar Error]
-    YY -->|✅ No| AAA[✅ Confirmar Guardado]
+    FFF --> QQQ{¿Error de BD?}
+    QQQ -->|❌ Sí| RRR[🚨 Mostrar Error]
+    QQQ -->|✅ No| SSS[✅ Confirmar Guardado]
     
-    SS --> BBB[🎨 UI Actualizada]
-    TT --> CCC[📅 Vista Sincronizada]
+    GGG --> TTT[😊 UI Actualizada con Estado de Ánimo]
+    HHH --> UUU[🎨 UI Actualizada]
+    III --> VVV[📅 Vista Sincronizada]
+    JJJ --> WWW[🖼️ Thumbnail Generado]
+    KKK --> XXX[📤 Compartir Completado]
     
-    UU --> DDD[❌ Cerrar Modal]
-    VV --> EEE[⚙️ Configuración Aplicada]
-    WW --> FFF[📁 Descarga Completa]
-    XX --> GGG[❌ Cerrar Modal]
+    LLL --> YYY[❌ Cerrar Modal]
+    MMM --> ZZZ[⚙️ Configuración Aplicada]
+    NNN --> AAAA[📁 Descarga Completa]
+    OOO --> BBBB[📥 Importación Completa]
+    PPP --> CCCC[❌ Cerrar Modal]
+    
+    SSS --> DDDD[✅ Confirmar Guardado]
+    TTT --> EEEE[🎨 UI Actualizada]
+    UUU --> FFFF[🎨 UI Actualizada]
+    VVV --> GGGG[📅 Vista Sincronizada]
+    WWW --> HHHH[🖼️ Thumbnail Listo]
+    XXX --> IIII[📤 Compartir Exitoso]
     
     %% Cleanup y Cierre
-    DDD --> Z
-    EEE --> Z
-    FFF --> Z
-    GGG --> Z
-    AAA --> Z
-    BBB --> Z
-    CCC --> Z
-    ZZ --> Z
+    YYY --> GG
+    ZZZ --> GG
+    AAAA --> GG
+    BBBB --> GG
+    CCCC --> GG
+    DDDD --> GG
+    EEEE --> GG
+    FFFF --> GG
+    GGGG --> GG
+    HHHH --> GG
+    IIII --> GG
+    RRR --> GG
     
     %% Manejo de Errores Globales
-    HHH[🌐 Error Global] --> III[📝 Log de Error]
-    III --> JJJ{¿Error Crítico?}
-    JJJ -->|❌ Sí| KKK[🚨 Reiniciar App]
-    JJJ -->|⚠️ No| Z
+    JJJJ[🌐 Error Global] --> KKKK[📝 Log de Error]
+    KKKK --> LLLL{¿Error Crítico?}
+    LLLL -->|❌ Sí| MMMM[🚨 Reiniciar App]
+    LLLL -->|⚠️ No| GG
     
     %% Destrucción de la App
-    Z --> LLL{¿Cerrar App?}
-    LLL -->|✅ Sí| MMM[🧹 Cleanup]
-    LLL -->|❌ No| Z
+    GG --> NNNN{¿Cerrar App?}
+    NNNN -->|✅ Sí| OOOO[🧹 Cleanup]
+    NNNN -->|❌ No| GG
     
-    MMM --> NNN[🎧 Remover Event Listeners]
-    MMM --> OOO[🗄️ Cerrar Conexiones BD]
-    MMM --> PPP[📱 Cleanup Modales]
-    MMM --> QQQ[📱 Cleanup Capacitor]
+    OOOO --> PPPP[🎧 Remover Event Listeners]
+    OOOO --> QQQQ[🗄️ Cerrar Conexiones BD]
+    OOOO --> RRRR[📱 Cleanup Modales]
+    OOOO --> SSSS[📱 Cleanup Capacitor]
+    OOOO --> TTTT[🔔 Cancelar Notificaciones]
+    OOOO --> UUUU[🌐 Cleanup Servicios de Red]
     
-    NNN --> RRR[💀 App Destruida]
-    OOO --> RRR
-    PPP --> RRR
-    QQQ --> RRR
+    PPPP --> VVVV[💀 App Destruida]
+    QQQQ --> VVVV
+    RRRR --> VVVV
+    SSSS --> VVVV
+    TTTT --> VVVV
+    UUUU --> VVVV
     
     %% Estilos
     classDef startEnd fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#fff
@@ -123,10 +165,12 @@ graph TD
     classDef error fill:#F44336,stroke:#C62828,stroke-width:2px,color:#fff
     classDef ui fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
     classDef data fill:#00BCD4,stroke:#00838F,stroke-width:2px,color:#fff
+    classDef service fill:#FF5722,stroke:#D84315,stroke-width:2px,color:#fff
     
-    class A,Y,RRR startEnd
-    class B,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X process
-    class AA,FF,YY,JJJ,LLL decision
-    class C,ZZ,HHH,III,KKK error
-    class BB,CC,DD,EE,GG,HH,II,JJ,UU,OO,QQ,XX,DDD,GGG ui
-    class KK,RR,VV,WW,AAA,MMM,NNN,OOO,PPP,QQQ data
+    class A,FF,VVVV startEnd
+    class B,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,AA,BB,CC,DD,EE process
+    class HH,OO,QQQ,LLLL,NNNN decision
+    class C,RRR,JJJJ,KKKK,MMMM error
+    class II,JJ,KK,LL,MM,NN,PP,QQ,RR,SS,TT,LLL,BBB,DDD,EEE,YYY,ZZZ,CCCC,TTT,UUU,III,JJJ,KKK ui
+    class UU,FFF,VV,GGG,WW,HHH,XX,III,YY,JJJ,ZZ,KKK,MMM,NNN,OOO,PPP,SSS,TTT,UUU,VVV,WWW,XXX,OOOO,QQQQ,RRRR,SSSS,TTTT,UUUU data
+    class J,K,P,Q,Y,Z,TTTT,UUUU service
