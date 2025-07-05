@@ -1,8 +1,8 @@
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { formatDate, formatDateForStorage, fromISODate } from './helpers.js';
+import NotificationService from './services/notification-service.js';
 
 class JournalManager {
     constructor() {
@@ -18,6 +18,7 @@ class JournalManager {
         this.autoMoodTimeout = null;
         this.lastAnalyzedText = '';
         this.isManualMoodSelection = false;
+        this.notificationService = new NotificationService();
     }
 
     async init() {
@@ -25,7 +26,7 @@ class JournalManager {
         this.setupEventListeners();
         this.setupAutoSave();
         await this.loadTodayEntry();
-        await this.setupNotifications();
+        await this.notificationService.init();
         await this.initSentimentAnalyzer();
 
         setTimeout(() => {
@@ -758,92 +759,20 @@ class JournalManager {
     }
 
     async setupNotifications() {
-        try {
-            const permissions = await LocalNotifications.requestPermissions();
-
-            if (permissions.display === 'granted') {
-                await this.scheduleNotifications();
-            }
-        } catch (error) {
-            console.error('Error setting up notifications:', error);
-        }
+        return await this.notificationService.init();
     }
 
     async scheduleNotifications() {
-        try {
-            const notificationTime = await window.db?.getSetting('notificationTime', '20:00') || '20:00';
-            const isEnabled = await window.db?.getSetting('notificationsEnabled', 'true') || 'true';
-
-            if (isEnabled === 'false') return;
-            await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
-
-            // Schedule daily reminder
-            const [hours, minutes] = notificationTime.split(':').map(Number);
-
-            await LocalNotifications.schedule({
-                notifications: [
-                    {
-                        title: 'Daily Journal',
-                        body: '¿Cómo fue tu día? Es hora de escribir en tu diario 📖',
-                        id: 1,
-                        schedule: {
-                            on: {
-                                hour: hours,
-                                minute: minutes
-                            },
-                            allowWhileIdle: true,
-                            repeats: true
-                        },
-                        actionTypeId: 'OPEN_JOURNAL',
-                        extra: {
-                            action: 'open_today'
-                        }
-                    }
-                ]
-            });
-
-        } catch (error) {
-            console.error('Error scheduling notifications:', error);
-        }
+        return await this.notificationService.scheduleNotifications();
     }
 
     async toggleNotifications(enabled) {
-        if (!window.db) return;
-
-        try {
-            await window.db.setSetting('notificationsEnabled', enabled.toString());
-
-            if (enabled) {
-                await this.scheduleNotifications();
-                if (window.ui) {
-                    window.ui.showToast('Recordatorios activados', 'success');
-                }
-            } else {
-                await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
-                if (window.ui) {
-                    window.ui.showToast('Recordatorios desactivados', 'info');
-                }
-            }
-        } catch (error) {
-            console.error('Error toggling notifications:', error);
-        }
+        return await this.notificationService.toggleNotifications(enabled);
     }
 
     async setNotificationTime(time) {
-        if (!window.db) return;
-
-        try {
-            await window.db.setSetting('notificationTime', time);
-            await this.scheduleNotifications();
-
-            if (window.ui) {
-                window.ui.showToast(`Recordatorio programado para las ${time}`, 'success');
-            }
-        } catch (error) {
-            console.error('Error setting notification time:', error);
-        }
+        return await this.notificationService.setNotificationTime(time);
     }
-
 
     async triggerHapticFeedback(style = 'light') {
         try {
