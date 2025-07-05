@@ -203,6 +203,7 @@ export class VirtualScrollManager {
         </div>` : '';
 
         const timeAgo = this.getTimeAgo(date);
+        const creationInfo = this.getCreationInfo(entry);
 
         const wordCount = entry.word_count || entry.wordCount || 0;
 
@@ -218,7 +219,7 @@ export class VirtualScrollManager {
                     <div class="flex-1 min-w-0">
                         <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">${formattedDate}</h3>
                         <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                            <span>${timeAgo}</span>
+                            ${this.renderTimeInfo(timeAgo, creationInfo, entry.date)}
                             ${wordCount > 0 ? `<span>&nbsp;&nbsp;•&nbsp;&nbsp;</span><span>${wordCount} palabras</span>` : ''}
                         </div>
                     </div>
@@ -356,41 +357,41 @@ export class VirtualScrollManager {
     getTimeAgo(date) {
         const now = new Date(); // Usar fecha actual en hora local
         const diffTime = Math.abs(now - date);
-        const diffMinutes = Math.floor(diffTime / (1000 * APP_CONSTANTS.TIME_CALCULATIONS.MINUTES_PER_HOUR));
-        const diffHours = Math.floor(diffTime / (1000 * APP_CONSTANTS.TIME_CALCULATIONS.MINUTES_PER_HOUR * APP_CONSTANTS.TIME_CALCULATIONS.HOURS_PER_DAY));
-        const diffDays = Math.floor(diffTime / (1000 * APP_CONSTANTS.TIME_CALCULATIONS.MINUTES_PER_HOUR * APP_CONSTANTS.TIME_CALCULATIONS.HOURS_PER_DAY));
-        const diffWeeks = Math.floor(diffDays / APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_WEEK);
-        const diffMonths = Math.floor(diffDays / APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_MONTH);
-        const diffYears = Math.floor(diffDays / APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_YEAR);
+        const diffMinutes = Math.floor(diffTime / (1000 * 60));
+        const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const diffWeeks = Math.floor(diffDays / 7);
+        const diffMonths = Math.floor(diffDays / 30);
+        const diffYears = Math.floor(diffDays / 365);
 
         // Menos de una hora
-        if (diffMinutes < APP_CONSTANTS.TIME_CALCULATIONS.MINUTES_PER_HOUR) {
+        if (diffMinutes < 60) {
             if (diffMinutes < 1) return 'Hace un momento';
             if (diffMinutes === 1) return 'Hace 1 minuto';
             return `Hace ${diffMinutes} minutos`;
         }
 
         // Menos de un día
-        if (diffHours < APP_CONSTANTS.TIME_CALCULATIONS.HOURS_PER_DAY) {
+        if (diffHours < 24) {
             if (diffHours === 1) return 'Hace 1 hora';
             return `Hace ${diffHours} horas`;
         }
 
         // Menos de una semana
-        if (diffDays < APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_WEEK) {
+        if (diffDays < 7) {
             if (diffDays === 1) return 'Ayer';
             if (diffDays === 2) return 'Anteayer';
             return `Hace ${diffDays} días`;
         }
 
         // Menos de un mes
-        if (diffDays < APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_MONTH) {
+        if (diffDays < 30) {
             if (diffWeeks === 1) return 'Hace 1 semana';
             return `Hace ${diffWeeks} semanas`;
         }
 
         // Menos de un año
-        if (diffDays < APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_YEAR) {
+        if (diffDays < 365) {
             if (diffMonths === 1) return 'Hace 1 mes';
             return `Hace ${diffMonths} meses`;
         }
@@ -398,6 +399,122 @@ export class VirtualScrollManager {
         // Un año o más
         if (diffYears === 1) return 'Hace 1 año';
         return `Hace ${diffYears} años`;
+    }
+
+    /**
+     * Obtiene información de creación de la entrada
+     * @param {Object} entry - Entrada del diario
+     * @returns {Object} Información de creación
+     */
+    getCreationInfo(entry) {
+        // Obtener timestamp de creación real
+        let creationDate = null;
+        
+        if (entry.created_at) {
+            creationDate = new Date(entry.created_at);
+        } else if (entry.updated_at) {
+            creationDate = new Date(entry.updated_at);
+        } else if (entry.updatedAt) {
+            creationDate = new Date(entry.updatedAt);
+        }
+
+        // Si no hay timestamp, usar la fecha del diario
+        if (!creationDate || isNaN(creationDate.getTime())) {
+            creationDate = fromISODate(entry.date);
+        }
+
+        const now = new Date();
+        const diffTime = Math.abs(now - creationDate);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        // Determinar si la entrada fue creada hoy
+        const isToday = diffDays === 0;
+        const isYesterday = diffDays === 1;
+        const isThisWeek = diffDays < 7;
+        const isThisMonth = diffDays < 30;
+
+        return {
+            creationDate,
+            isToday,
+            isYesterday,
+            isThisWeek,
+            isThisMonth,
+            diffDays
+        };
+    }
+
+    /**
+     * Renderiza la información de tiempo de manera inteligente
+     * @param {string} timeAgo - Tiempo transcurrido desde la fecha del diario
+     * @param {Object} creationInfo - Información de creación real
+     * @param {string} diaryDate - Fecha del diario
+     * @returns {string} HTML con la información de tiempo
+     */
+    renderTimeInfo(timeAgo, creationInfo, diaryDate) {
+        const { isToday, isYesterday, isThisWeek, isThisMonth, diffDays } = creationInfo;
+        const diaryDateObj = fromISODate(diaryDate);
+        const today = new Date();
+        
+        // Verificar si la fecha del diario es diferente a la fecha de creación
+        const isRetrospectiveEntry = !this.isSameDay(diaryDateObj, creationInfo.creationDate);
+        
+        // Generar texto de tiempo de creación
+        let creationText = '';
+        if (isToday) {
+            creationText = 'Escrito hoy';
+        } else if (isYesterday) {
+            creationText = 'Escrito ayer';
+        } else if (isThisWeek) {
+            creationText = `Escrito hace ${diffDays} días`;
+        } else if (isThisMonth) {
+            const weeks = Math.floor(diffDays / 7);
+            if (weeks === 1) {
+                creationText = 'Escrito hace 1 semana';
+            } else if (weeks > 1) {
+                creationText = `Escrito hace ${weeks} semanas`;
+            } else {
+                creationText = `Escrito hace ${diffDays} días`;
+            }
+        } else {
+            const months = Math.floor(diffDays / 30);
+            const years = Math.floor(diffDays / 365);
+            
+            if (years > 0) {
+                if (years === 1) {
+                    creationText = 'Escrito hace 1 año';
+                } else {
+                    creationText = `Escrito hace ${years} años`;
+                }
+            } else if (months > 0) {
+                if (months === 1) {
+                    creationText = 'Escrito hace 1 mes';
+                } else {
+                    creationText = `Escrito hace ${months} meses`;
+                }
+            } else {
+                creationText = `Escrito hace ${diffDays} días`;
+            }
+        }
+        
+        // Si es una entrada retrospectiva, mostrar información adicional
+        if (isRetrospectiveEntry) {
+            const diaryDateFormatted = formatDate(diaryDateObj, 'short');
+            return `<span title="Entrada retrospectiva para ${diaryDateFormatted}">${creationText}</span>`;
+        }
+        
+        return `<span>${creationText}</span>`;
+    }
+
+    /**
+     * Compara si dos fechas son el mismo día
+     * @param {Date} date1 - Primera fecha
+     * @param {Date} date2 - Segunda fecha
+     * @returns {boolean} True si son el mismo día
+     */
+    isSameDay(date1, date2) {
+        return date1.getDate() === date2.getDate() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getFullYear() === date2.getFullYear();
     }
 
     renderEmptyState() {
