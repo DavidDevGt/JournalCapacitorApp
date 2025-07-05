@@ -20,7 +20,20 @@
     "android:install": "adb install -r android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
     "android:logs": "adb logcat --pid=$(adb shell pidof com.daviddevgt.journalapp)",
     "mobile:build-install": "powershell -ExecutionPolicy Bypass -File .\\build-and-install.ps1",
-    "mobile:dev-tools": "powershell -ExecutionPolicy Bypass -File .\\dev-tools.ps1"
+    "mobile:dev-tools": "powershell -ExecutionPolicy Bypass -File .\\dev-tools.ps1",
+    "git:feature": "git checkout develop && git pull origin develop && git checkout -b",
+    "git:hotfix": "git checkout main && git pull origin main && git checkout -b",
+    "git:release": "git checkout develop && git pull origin develop && git checkout -b",
+    "git:cleanup": "git branch --merged | grep -v \"\\*\" | grep -v \"main\" | grep -v \"develop\" | xargs -n 1 git branch -d",
+    "git:log": "git log --oneline --graph --all",
+    "git:tags": "git tag -l",
+    "commit:feat": "git commit -m \"feat:",
+    "commit:fix": "git commit -m \"fix:",
+    "commit:docs": "git commit -m \"docs:",
+    "commit:style": "git commit -m \"style:",
+    "commit:refactor": "git commit -m \"refactor:",
+    "commit:test": "git commit -m \"test:",
+    "commit:chore": "git commit -m \"chore:"
   },
   "keywords": [
     "journaling",
