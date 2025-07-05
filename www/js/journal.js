@@ -831,25 +831,92 @@ class JournalManager {
         }
     }
 
+    /**
+     * Solicita permisos de almacenamiento si es necesario
+     * @private
+     */
+    async _requestStoragePermissions() {
+        try {
+            const { Permissions } = await import('@capacitor/core');
+            
+            // Verificar si ya tenemos permisos
+            const permissionStatus = await Permissions.query({ name: 'storage' });
+            
+            if (permissionStatus.state === 'granted') {
+                return true;
+            }
+            
+            // Solicitar permisos
+            const result = await Permissions.request({ name: 'storage' });
+            return result.state === 'granted';
+        } catch (error) {
+            console.warn('Error requesting storage permissions:', error);
+            // En Android, intentar usar el FileProvider
+            return true;
+        }
+    }
+
     async exportEntries() {
         if (!window.db) return;
 
         try {
+            // Solicitar permisos de almacenamiento
+            await this._requestStoragePermissions();
+            
             const data = await window.db.exportData();
-            const fileName = `journal-backup-${new Date().toISOString().split('T')[0]}.json`;
+
+            const now = new Date();
+            const timestamp = now.toISOString().replace(/[:.]/g, '-');
+            const fileName = `journal-backup-${timestamp}.json`;
+
             const jsonString = JSON.stringify(data, null, 2);
 
             const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
 
-            await Filesystem.writeFile({
-                path: fileName,
-                data: jsonString,
-                directory: Directory.Documents,
-                encoding: Encoding.UTF8
-            });
+            // Intentar primero con el directorio de documentos de la app
+            try {
+                await Filesystem.writeFile({
+                    path: fileName,
+                    data: jsonString,
+                    directory: Directory.Documents,
+                    encoding: Encoding.UTF8
+                });
 
-            if (window.ui) {
-                window.ui.showToast(`Backup guardado en Documentos/${fileName}`, 'success');
+                if (window.ui) {
+                    window.ui.showToast(`Backup guardado en Documentos/${fileName}`, 'success');
+                }
+                return;
+            } catch (documentsError) {
+                console.warn('Error writing to Documents directory:', documentsError);
+                
+                // Fallback: intentar con el directorio de datos de la app
+                try {
+                    await Filesystem.writeFile({
+                        path: fileName,
+                        data: jsonString,
+                        directory: Directory.Data,
+                        encoding: Encoding.UTF8
+                    });
+
+                    if (window.ui) {
+                        window.ui.showToast(`Backup guardado en Datos/${fileName}`, 'success');
+                    }
+                    return;
+                } catch (dataError) {
+                    console.warn('Error writing to Data directory:', dataError);
+                    
+                    // Último fallback: usar el directorio de cache
+                    await Filesystem.writeFile({
+                        path: fileName,
+                        data: jsonString,
+                        directory: Directory.Cache,
+                        encoding: Encoding.UTF8
+                    });
+
+                    if (window.ui) {
+                        window.ui.showToast(`Backup guardado en Cache/${fileName}`, 'success');
+                    }
+                }
             }
         } catch (error) {
             console.error('Error exporting entries:', error);

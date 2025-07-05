@@ -22,7 +22,6 @@ const PHRASES_BY_TIME = {
     night: [
         'Antes de dormir, reflexiona sobre tu día ⭐',
         '¿Qué fue lo mejor de hoy? No lo olvides 💭',
-        'Escribe sobre tus sueños y metas 💫',
         '¿Qué aprendiste sobre ti mismo hoy? 🪞'
     ]
 };
