@@ -6,9 +6,9 @@
     <color name="colorAccent">#06b6d4</color>
     
     <!-- Splash screen colors -->
-    <color name="splash_background">#6366f1</color>
-    <color name="splash_background_dark">#1e1b4b</color>
-    <color name="splash_icon_background">#6366f1</color>
+    <color name="splash_background">#ffffff</color>
+    <color name="splash_background_dark">#ffffff</color>
+    <color name="splash_icon_background">#ffffff</color>
     
     <!-- Additional colors -->
     <color name="white">#ffffff</color>
