@@ -1,15 +1,16 @@
 import { formatDate, formatDateForStorage, fromISODate } from '../helpers.js';
+import { APP_CONSTANTS } from '../constants/index.js';
 
 export class VirtualScrollManager {
     constructor(uiManager) {
         this.ui = uiManager;
         this.config = {
-            itemHeight: 160,
+            itemHeight: APP_CONSTANTS.VIRTUAL_SCROLL.ITEM_HEIGHT,
             containerHeight: 0,
             visibleItems: 0,
             scrollTop: 0,
             totalItems: 0,
-            bufferSize: 8,
+            bufferSize: APP_CONSTANTS.VIRTUAL_SCROLL.BUFFER_SIZE,
             startIndex: 0,
             endIndex: 0
         };
@@ -42,19 +43,16 @@ export class VirtualScrollManager {
 
         if (!entriesView || !entriesList) return;
 
-        // Create virtual scroll container
         const container = document.createElement('div');
         container.id = 'virtual-scroll-container';
         container.className = 'h-full overflow-auto';
         container.style.position = 'relative';
 
-        // Create viewport
         const viewport = document.createElement('div');
         viewport.id = 'virtual-scroll-viewport';
         viewport.className = 'relative';
         viewport.style.height = '0px';
 
-        // Create content container
         const content = document.createElement('div');
         content.id = 'virtual-scroll-content';
         content.className = 'absolute top-0 left-0 right-0';
@@ -73,7 +71,7 @@ export class VirtualScrollManager {
     setupListeners() {
         if (!this.container) return;
 
-        const throttledScrollHandler = this.throttle(this.handleScroll.bind(this), 16);
+        const throttledScrollHandler = this.throttle(this.handleScroll.bind(this), APP_CONSTANTS.VIRTUAL_SCROLL.THROTTLE_LIMIT_MS);
         this.container.addEventListener('scroll', throttledScrollHandler);
 
         this.container.addEventListener('wheel', (e) => {
@@ -185,7 +183,7 @@ export class VirtualScrollManager {
 
         const date = fromISODate(entry.date);
         const formattedDate = formatDate(date, 'short');
-        const preview = entry.content.substring(0, 100) + (entry.content.length > 100 ? '...' : '');
+        const preview = entry.content.substring(0, APP_CONSTANTS.VIRTUAL_SCROLL.CONTENT_PREVIEW_LENGTH) + (entry.content.length > APP_CONSTANTS.VIRTUAL_SCROLL.CONTENT_PREVIEW_LENGTH ? '...' : '');
 
         const moodDisplay = entry.mood ? `
         <div class="mood-indicator flex-shrink-0 w-8 h-8 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center border border-amber-100 dark:border-amber-800/50">
@@ -240,13 +238,12 @@ export class VirtualScrollManager {
         </div>
 `;
 
-        // --- Swipe gesture logic ---
         let startX = 0;
         let currentX = 0;
         let dragging = false;
         let hasMoved = false;
-        const threshold = 60; // px para eliminar
-        const maxTranslate = 80; // px max swipe
+        const threshold = APP_CONSTANTS.VIRTUAL_SCROLL.SWIPE_THRESHOLD_PX;
+        const maxTranslate = APP_CONSTANTS.VIRTUAL_SCROLL.MAX_SWIPE_TRANSLATE_PX;
 
         // Pointer/touch events
         itemElement.addEventListener('pointerdown', (e) => {
@@ -262,7 +259,7 @@ export class VirtualScrollManager {
             if (!dragging) return;
             currentX = e.clientX;
             let deltaX = currentX - startX;
-            if (Math.abs(deltaX) > 5) hasMoved = true;
+            if (Math.abs(deltaX) > APP_CONSTANTS.VIRTUAL_SCROLL.MIN_SWIPE_MOVEMENT_PX) hasMoved = true;
             if (deltaX < 0) {
                 deltaX = Math.max(deltaX, -maxTranslate);
                 itemElement.style.transform = `translateX(${deltaX}px)`;
@@ -273,14 +270,14 @@ export class VirtualScrollManager {
             if (!dragging) return;
             dragging = false;
             let deltaX = currentX - startX;
-            // Solo eliminar si realmente hubo swipe y se superó el umbral
+
             if (hasMoved && deltaX < -threshold) {
                 itemElement.style.transition = 'transform 0.25s cubic-bezier(.4,2,.6,1), opacity 0.2s';
-                itemElement.style.transform = `translateX(-120%)`;
+                itemElement.style.transform = `translateX(${APP_CONSTANTS.VIRTUAL_SCROLL.DELETE_TRANSFORM_PERCENT}%)`;
                 itemElement.style.opacity = '0';
                 setTimeout(() => {
                     this.handleDeleteEntry(index);
-                }, 220);
+                }, APP_CONSTANTS.VIRTUAL_SCROLL.DELETE_ANIMATION_DELAY_MS);
             } else {
                 itemElement.style.transition = 'transform 0.25s cubic-bezier(.4,2,.6,1)';
                 itemElement.style.transform = 'translateX(0)';
@@ -316,14 +313,11 @@ export class VirtualScrollManager {
                 }
             }
             
-            // Actualizar arrays locales
             this.filteredEntries.splice(index, 1);
             this.allEntries = this.allEntries.filter(e => e.date !== entry.date);
             
-            // Re-renderizar la lista
             this.renderItems();
             
-            // Notificar a otros componentes sobre la eliminación
             this.#notifyEntryDeletion(entry.date);
             
             if (window.ui && typeof window.ui.showToast === 'function') {
@@ -342,13 +336,11 @@ export class VirtualScrollManager {
      * @private
      */
     #notifyEntryDeletion(deletedDate) {
-        // Disparar evento personalizado para que otros componentes se enteren
         const deletionEvent = new CustomEvent('entryDeleted', {
             detail: { deletedDate }
         });
         document.dispatchEvent(deletionEvent);
         
-        // También notificar directamente a componentes específicos
         if (window.journal && typeof window.journal.handleEntryDeletion === 'function') {
             window.journal.handleEntryDeletion(deletedDate);
         }
@@ -361,41 +353,41 @@ export class VirtualScrollManager {
     getTimeAgo(date) {
         const now = new Date(); // Usar fecha actual en hora local
         const diffTime = Math.abs(now - date);
-        const diffMinutes = Math.floor(diffTime / (1000 * 60));
-        const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        const diffWeeks = Math.floor(diffDays / 7);
-        const diffMonths = Math.floor(diffDays / 30);
-        const diffYears = Math.floor(diffDays / 365);
+        const diffMinutes = Math.floor(diffTime / (1000 * APP_CONSTANTS.TIME_CALCULATIONS.MINUTES_PER_HOUR));
+        const diffHours = Math.floor(diffTime / (1000 * APP_CONSTANTS.TIME_CALCULATIONS.MINUTES_PER_HOUR * APP_CONSTANTS.TIME_CALCULATIONS.HOURS_PER_DAY));
+        const diffDays = Math.floor(diffTime / (1000 * APP_CONSTANTS.TIME_CALCULATIONS.MINUTES_PER_HOUR * APP_CONSTANTS.TIME_CALCULATIONS.HOURS_PER_DAY));
+        const diffWeeks = Math.floor(diffDays / APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_WEEK);
+        const diffMonths = Math.floor(diffDays / APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_MONTH);
+        const diffYears = Math.floor(diffDays / APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_YEAR);
 
         // Menos de una hora
-        if (diffMinutes < 60) {
+        if (diffMinutes < APP_CONSTANTS.TIME_CALCULATIONS.MINUTES_PER_HOUR) {
             if (diffMinutes < 1) return 'Hace un momento';
             if (diffMinutes === 1) return 'Hace 1 minuto';
             return `Hace ${diffMinutes} minutos`;
         }
 
         // Menos de un día
-        if (diffHours < 24) {
+        if (diffHours < APP_CONSTANTS.TIME_CALCULATIONS.HOURS_PER_DAY) {
             if (diffHours === 1) return 'Hace 1 hora';
             return `Hace ${diffHours} horas`;
         }
 
         // Menos de una semana
-        if (diffDays < 7) {
+        if (diffDays < APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_WEEK) {
             if (diffDays === 1) return 'Ayer';
             if (diffDays === 2) return 'Anteayer';
             return `Hace ${diffDays} días`;
         }
 
         // Menos de un mes
-        if (diffDays < 30) {
+        if (diffDays < APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_MONTH) {
             if (diffWeeks === 1) return 'Hace 1 semana';
             return `Hace ${diffWeeks} semanas`;
         }
 
         // Menos de un año
-        if (diffDays < 365) {
+        if (diffDays < APP_CONSTANTS.TIME_CALCULATIONS.DAYS_PER_YEAR) {
             if (diffMonths === 1) return 'Hace 1 mes';
             return `Hace ${diffMonths} meses`;
         }
@@ -437,7 +429,7 @@ export class VirtualScrollManager {
                 this.updateDimensions();
                 this.calculateVisibleRange();
                 this.renderItems();
-            }, 30);
+            }, APP_CONSTANTS.VIRTUAL_SCROLL.INITIALIZATION_DELAY_MS);
         });
     }
 
@@ -473,14 +465,14 @@ export class VirtualScrollManager {
         return this.filteredEntries.slice(startIndex, endIndex);
     }
 
-    adjustItemHeight(minHeight = 150, maxHeight = 300) {
+    adjustItemHeight(minHeight = APP_CONSTANTS.VIRTUAL_SCROLL.ITEM_HEIGHT_ADJUSTMENT.MIN_HEIGHT, maxHeight = APP_CONSTANTS.VIRTUAL_SCROLL.ITEM_HEIGHT_ADJUSTMENT.MAX_HEIGHT) {
         const avgContentLength = this.filteredEntries.reduce((sum, entry) => {
             return sum + (entry.content ? entry.content.length : 0);
         }, 0) / this.filteredEntries.length;
 
         let newHeight = minHeight;
-        if (avgContentLength > 200) {
-            newHeight = Math.min(minHeight + (avgContentLength - 200) * 0.3, maxHeight);
+        if (avgContentLength > APP_CONSTANTS.VIRTUAL_SCROLL.ITEM_HEIGHT_ADJUSTMENT.CONTENT_LENGTH_THRESHOLD) {
+            newHeight = Math.min(minHeight + (avgContentLength - APP_CONSTANTS.VIRTUAL_SCROLL.ITEM_HEIGHT_ADJUSTMENT.CONTENT_LENGTH_THRESHOLD) * APP_CONSTANTS.VIRTUAL_SCROLL.ITEM_HEIGHT_ADJUSTMENT.HEIGHT_MULTIPLIER, maxHeight);
         }
 
         this.config.itemHeight = Math.ceil(newHeight);
