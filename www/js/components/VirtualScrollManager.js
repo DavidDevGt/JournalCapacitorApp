@@ -319,6 +319,9 @@ export class VirtualScrollManager {
             this.renderItems();
             
             this.#notifyEntryDeletion(entry.date);
+
+            // Notificar actualización del calendario
+            document.dispatchEvent(new Event('calendarNeedsRefresh'));
             
             if (window.ui && typeof window.ui.showToast === 'function') {
                 window.ui.showToast('Entrada eliminada', 'success');

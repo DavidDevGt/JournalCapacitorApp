@@ -147,7 +147,7 @@ export const handleDeepLink = (url, ui) => {
 export const handleResize = (ui) => {
     const isMobile = window.innerWidth < 640;
     if (ui.currentView === 'calendar' && isMobile) {
-        ui.renderCalendar();
+        ui.calendarManager.render();
     }
 };
 

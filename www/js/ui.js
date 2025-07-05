@@ -550,8 +550,18 @@ class UIManager {
             console.log('Lista de entradas actualizada después de eliminación');
         }
     }
+
+    refreshCalendar() {
+        if (this.calendarManager) {
+            this.calendarManager.clearCache();
+            this.calendarManager.render();
+        }
+    }
 }
 
 const ui = new UIManager();
 window.ui = ui;
+
+document.addEventListener('calendarNeedsRefresh', () => ui.refreshCalendar());
+
 export default ui;

@@ -483,6 +483,9 @@ class JournalManager {
                 this.markSaved();
                 await this.triggerHapticFeedback('light');
 
+                // Notificar actualización del calendario
+                document.dispatchEvent(new Event('calendarNeedsRefresh'));
+
                 if (!silent && window.ui) {
                     window.ui.showToast('Entrada guardada correctamente', 'success');
                 }
@@ -818,6 +821,9 @@ class JournalManager {
                     window.ui.showToast('Entrada eliminada', 'success');
                     window.ui.loadAllEntries(); // Refresh entries list
                 }
+
+                // Notificar actualización del calendario
+                document.dispatchEvent(new Event('calendarNeedsRefresh'));
 
                 // If deleting current day's entry, clear the form
                 const currentDate = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : new Date().toISOString().split('T')[0];
