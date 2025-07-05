@@ -24,7 +24,7 @@ jobs:
         run: npm ci
       
       - name: Validate conventional commits
-        run: npx commitlint --from HEAD~10 --to HEAD --verbose
+        run: npx commitlint --edit $(git rev-parse HEAD)
 
   test:
     runs-on: ubuntu-latest
