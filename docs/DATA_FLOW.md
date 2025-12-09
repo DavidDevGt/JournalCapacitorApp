@@ -369,19 +369,19 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[Usuario solicita estadísticas (showStats)] --> B(Controller: showStats)
+    A[Usuario solicita estadísticas] --> B[Controller: showStats]
 
     subgraph Service Layer (Lógica de Negocio)
         B --> C[Service: getWritingStats]
         C --> D[Service: calculateCurrentStreak]
         D --> E[Repo: getEntryDates]
-        E --> F(DB: SELECT date FROM entries ORDER BY date DESC)
+        E --> F((DB: SELECT date...))
         F --> D
     end
 
     subgraph Repository Layer (Acceso a Datos)
         C --> G[Repo: getAggregatedStats]
-        G --> H(DB: SELECT COUNT(*) AS totalEntries, SUM(word_count) AS totalWords FROM entries)
+        G --> H((DB: SELECT COUNT...))
     end
 
     H --> I[totalEntries, totalWords]
@@ -394,7 +394,7 @@ flowchart TD
     L --> M
 
     M --> N[statsObject]
-    N --> O(Controller: generateStatsView)
+    N --> O[Controller: generateStatsView]
     O --> P[showStatsModal]
     P --> Q[renderStats]
     Q --> R[Usuario ve estadísticas]
