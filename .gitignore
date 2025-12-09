@@ -38,3 +38,71 @@ android/local.properties
 *.tmp
 *.temp
 test-results/*
+
+# ===== ARCHIVOS SENSIBLES - NO SUBIR A GITHUB =====
+
+# Firebase Configuration
+google-services.json
+GoogleService-Info.plist
+
+# Android Keystores y Certificados
+*.keystore
+*.jks
+*.p12
+*.pem
+android/app/release-key.keystore
+android/app/debug.keystore
+android/app/*.keystore
+
+# Android Local Properties (contiene rutas específicas del desarrollador)
+android/local.properties
+
+# Android Build Files (contienen información de firma)
+android/app/build/
+android/build/
+android/.gradle/
+
+# iOS Certificates y Provisioning Profiles
+ios/App/App/embedded.mobileprovision
+ios/App/App/*.p12
+ios/App/App/*.cer
+ios/App/App/*.pem
+
+# Environment Variables y Configuraciones Sensibles
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+*.env
+
+# API Keys y Secrets
+secrets.json
+config.json
+firebase-config.json
+api-keys.json
+
+# Logs de Build que pueden contener información sensible
+build-logs/
+*.log
+
+# Archivos de Backup
+*.bak
+*.backup
+*~
+
+# Archivos de Testing que pueden contener datos sensibles
+coverage/
+.nyc_output/
+
+.vscode/settings.json
+.idea/workspace.xml
+.idea/tasks.xml
+
+# Archivos de Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+android/signing.properties
+.kilocodemodes

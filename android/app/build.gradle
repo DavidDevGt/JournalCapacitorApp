@@ -3,6 +3,31 @@ apply plugin: 'com.android.application'
 android {
     namespace "com.daviddevgt.journalapp"
     compileSdk rootProject.ext.compileSdkVersion
+
+    def signingPropertiesFile = file("../signing.properties")
+
+    if (signingPropertiesFile.exists()) {
+        def signingProperties = new Properties()
+        signingProperties.load(new FileInputStream(signingPropertiesFile))
+
+        // Validar que el keystore exista
+        def keystoreFile = file(signingProperties['storeFile'])
+        if (!keystoreFile.exists()) {
+            throw new Exception("Keystore file not found at: ${keystoreFile.path}. Please check the storeFile path in signing.properties")
+        }
+
+        signingConfigs {
+            release {
+                storeFile keystoreFile
+                storePassword signingProperties['storePassword']
+                keyAlias signingProperties['keyAlias']
+                keyPassword signingProperties['keyPassword']
+            }
+        }
+    } else {
+        throw new Exception("signing.properties file not found at: ${signingPropertiesFile.path}. Release builds require this file.")
+    }
+
     defaultConfig {
         applicationId "com.daviddevgt.journalapp"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -11,15 +36,18 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+            // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            
+            signingConfig signingConfigs.release
         }
     }
 }

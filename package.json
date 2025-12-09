@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "build:css": "tailwindcss -i ./www/css/main.css -o ./www/css/styles.css --watch",
     "sync": "npm run build && npx cap sync",
-    "build:android": "npm run build && npx cap build android",
+    "build:android": "npm run build && cd android && .\\gradlew.bat assembleRelease",
     "build:ios": "npm run build && npx cap build ios",
     "open:android": "npx cap open android",
     "open:ios": "npx cap open ios",
