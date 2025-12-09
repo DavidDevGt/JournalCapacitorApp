@@ -369,28 +369,35 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[Usuario solicita estadísticas] --> B[showStats]
-    B --> C[getWritingStats]
-    C --> D[db.getStats]
-    D --> E[SELECT COUNT(*) FROM entries]
-    D --> F[SELECT SUM(word_count) FROM entries]
-    D --> G[getCurrentStreak]
-    G --> H[Iterar fechas]
-    H --> I[getEntry(date)]
-    I --> J[Check content]
-    J --> K[Increment streak]
-    K --> H
-    E --> L[totalEntries]
-    F --> M[totalWords]
-    G --> N[currentStreak]
-    L --> O[calculate average]
-    M --> O
-    N --> O
-    O --> P[createStatsObject]
-    P --> Q[generateStatsHTML]
-    Q --> R[showStatsModal]
-    R --> S[renderStats]
-    S --> Usuario
+    A[Usuario solicita estadísticas (showStats)] --> B(Controller: showStats)
+
+    subgraph Service Layer (Lógica de Negocio)
+        B --> C[Service: getWritingStats]
+        C --> D[Service: calculateCurrentStreak]
+        D --> E[Repo: getEntryDates]
+        E --> F(DB: SELECT date FROM entries ORDER BY date DESC)
+        F --> D
+    end
+
+    subgraph Repository Layer (Acceso a Datos)
+        C --> G[Repo: getAggregatedStats]
+        G --> H(DB: SELECT COUNT(*) AS totalEntries, SUM(word_count) AS totalWords FROM entries)
+    end
+
+    H --> I[totalEntries, totalWords]
+    D --> J[currentStreak]
+
+    I --> K[Service: calculateAverage]
+    K --> L[avgWordsPerEntry]
+
+    J --> M[Service: createStatsObject]
+    L --> M
+
+    M --> N[statsObject]
+    N --> O(Controller: generateStatsView)
+    O --> P[showStatsModal]
+    P --> Q[renderStats]
+    Q --> R[Usuario ve estadísticas]
 ```
 
 ## Diagramas Mermaid
