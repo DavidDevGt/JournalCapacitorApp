@@ -371,7 +371,8 @@ sequenceDiagram
 flowchart TD
     A[Usuario solicita estadísticas] --> B[Controller: showStats]
 
-    subgraph Service Layer (Lógica de Negocio)
+    subgraph ServiceLayer
+        direction LR
         B --> C[Service: getWritingStats]
         C --> D[Service: calculateCurrentStreak]
         D --> E[Repo: getEntryDates]
@@ -379,7 +380,8 @@ flowchart TD
         F --> D
     end
 
-    subgraph Repository Layer (Acceso a Datos)
+    subgraph RepositoryLayer
+        direction LR
         C --> G[Repo: getAggregatedStats]
         G --> H((DB: SELECT COUNT...))
     end
@@ -398,6 +400,13 @@ flowchart TD
     O --> P[showStatsModal]
     P --> Q[renderStats]
     Q --> R[Usuario ve estadísticas]
+
+    style ServiceLayer fill:#f9f,stroke:#333,stroke-width:2px
+    style RepositoryLayer fill:#ccf,stroke:#333,stroke-width:2px
+    
+    %% Etiquetas descriptivas (no obligatorias, pero útiles)
+    F -.->|Fechas de Entradas| E
+    H -.->|Estadísticas Agregadas| G
 ```
 
 ## Diagramas Mermaid
