@@ -1,3 +1,5 @@
+import registry from '../registry.js';
+
 export class NavigationManager {
     #ui;
     #views = ['today', 'calendar', 'entries'];
@@ -240,8 +242,8 @@ export class NavigationManager {
      * @private
      */
     #updateStateManager(viewName) {
-        if (window.stateManager?.getState?.().currentView !== viewName) {
-            window.stateManager?.setCurrentView?.(viewName);
+        if (registry.stateManager?.getState?.().currentView !== viewName) {
+            registry.stateManager?.setCurrentView?.(viewName);
         }
     }
 
@@ -258,9 +260,9 @@ export class NavigationManager {
                 this.#ui.loadAllEntries?.();
                 break;
             case 'main':
-                if (window.journal && typeof window.journal.loadTodayEntry === 'function') {
+                if (registry.journal && typeof registry.journal.loadTodayEntry === 'function') {
                     setTimeout(() => {
-                        window.journal.loadTodayEntry();
+                        registry.journal.loadTodayEntry();
                     }, 100);
                 }
                 break;

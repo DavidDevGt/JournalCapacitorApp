@@ -1,4 +1,5 @@
 import { formatDate, toISODate, fromISODate } from './helpers/date-utils.js';
+import registry from './registry.js';
 
 const LOCALE = 'es-ES'
 const SHORT_OPTS = {
@@ -424,7 +425,7 @@ export const generateExportConfirmHTML = () => `
                     </svg>
                 </div>
                 <h3 class="text-2xl font-bold mb-2 bg-gradient-to-r from-indigo-900 to-violet-900 dark:from-indigo-600 dark:to-violet-600 bg-clip-text text-transparent">
-                    Exportar Diario
+                    Exportar Datos
                 </h3>
             </div>
 
@@ -480,7 +481,7 @@ export const generateImportConfirmHTML = () => `
                     </svg>
                 </div>
                 <h3 class="text-2xl font-bold mb-2 bg-gradient-to-r from-green-900 to-emerald-900 dark:from-green-600 dark:to-emerald-600 bg-clip-text text-transparent">
-                    Importar Diario
+                    Importar Datos
                 </h3>
             </div>
 
@@ -662,10 +663,10 @@ export const getSettingsAsync = async () => {
     const settings = getSettings();
 
     // If database is available, sync notification settings
-    if (window.db && window.db.isInitialized) {
+    if (registry.db && registry.db.isInitialized) {
         try {
-            const dbNotificationsEnabled = await window.db.getSetting('notificationsEnabled', 'true');
-            const dbNotificationTime = await window.db.getSetting('notificationTime', '20:00');
+            const dbNotificationsEnabled = await registry.db.getSetting('notificationsEnabled', 'true');
+            const dbNotificationTime = await registry.db.getSetting('notificationTime', '20:00');
 
             settings.notifications = dbNotificationsEnabled === 'true';
             settings.notificationTime = dbNotificationTime;
@@ -730,19 +731,19 @@ export const showSettingsModal = async () => {
             saveSettings(newSettings);
 
             // Sync notifications with journal system if available
-            if (window.journal) {
+            if (registry.journal) {
                 try {
                     // Update database settings for notifications
-                    if (window.db) {
-                        await window.db.setSetting('notificationsEnabled', newSettings.notifications.toString());
-                        await window.db.setSetting('notificationTime', newSettings.notificationTime);
+                    if (registry.db) {
+                        await registry.db.setSetting('notificationsEnabled', newSettings.notifications.toString());
+                        await registry.db.setSetting('notificationTime', newSettings.notificationTime);
                     }
 
                     // Update notification scheduling
                     if (newSettings.notifications) {
-                        await window.journal.scheduleNotifications();
+                        await registry.journal.scheduleNotifications();
                     } else {
-                        await window.journal.toggleNotifications(false);
+                        await registry.journal.toggleNotifications(false);
                     }
                 } catch (error) {
                     console.warn('Error syncing notifications:', error);
@@ -750,8 +751,8 @@ export const showSettingsModal = async () => {
             }
 
             // Show brief confirmation
-            if (window.ui) {
-                window.ui.showToast('✓ Guardado', 'success', 1000);
+            if (registry.ui) {
+                registry.ui.showToast('✓ Guardado', 'success', 1000);
             }
         };
 
@@ -776,9 +777,9 @@ export const showSettingsModal = async () => {
         if (importFile) {
             importFile.addEventListener('change', (e) => {
                 const file = e.target.files[0];
-                if (file && window.journal) {
+                if (file && registry.journal) {
                     // Usar el método legacy para compatibilidad con input file
-                    window.journal.importEntriesFromFile(file);
+                    registry.journal.importEntriesFromFile(file);
                     closeModal();
                 }
             });

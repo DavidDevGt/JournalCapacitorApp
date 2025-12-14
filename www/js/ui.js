@@ -4,6 +4,7 @@ import { VirtualScrollManager } from './components/VirtualScrollManager';
 import { CalendarManager } from './components/CalendarManager';
 import { NavigationManager } from './components/NavigationManager';
 import { formatDate, formatDateForStorage, fromISODate } from './helpers.js';
+import registry from './registry.js';
 
 class UIManager {
     constructor() {
@@ -86,16 +87,16 @@ class UIManager {
         this.switchView('today');
         this.setupDateDisplay();
 
-        if (window.stateManager) {
-            const currentStateDate = window.stateManager.getState().currentDate;
+        if (registry.stateManager) {
+            const currentStateDate = registry.stateManager.getState().currentDate;
             const newDateStr = this.formatDateForStorage(dateObj);
             const currentStateStr = this.formatDateForStorage(fromISODate(currentStateDate));
             if (newDateStr !== currentStateStr) {
-                window.stateManager.setCurrentDate(dateObj);
+                registry.stateManager.setCurrentDate(dateObj);
             }
         }
-        if (window.journal) {
-            window.journal.loadEntryForDate(this.formatDateForStorage(dateObj));
+        if (registry.journal) {
+            registry.journal.loadEntryForDate(this.formatDateForStorage(dateObj));
         }
     }
 
@@ -274,20 +275,20 @@ class UIManager {
                 this.switchView('entries');
             }
 
-            if (!window.db) {
+            if (!registry.db) {
                 console.error('Database not available for search');
                 return;
             }
 
             // Si no hay query, mostrar todas las entradas
             if (!query?.trim()) {
-                const allEntries = await window.db.getAllEntries();
+                const allEntries = await registry.db.getAllEntries();
                 this.virtualScrollManager.loadEntries(allEntries);
                 return;
             }
 
             // Realizar búsqueda
-            const searchResults = await window.db.searchEntries(query.trim());
+            const searchResults = await registry.db.searchEntries(query.trim());
             
             // Mostrar los resultados filtrados
             this.virtualScrollManager.filterEntries(searchResults);
@@ -301,7 +302,7 @@ class UIManager {
             console.error('Error performing search:', error);
             // En caso de error, mostrar todas las entradas
             try {
-                const allEntries = await window.db.getAllEntries();
+                const allEntries = await registry.db.getAllEntries();
                 this.virtualScrollManager.loadEntries(allEntries);
             } catch (fallbackError) {
                 console.error('Error loading fallback entries:', fallbackError);
@@ -327,7 +328,7 @@ class UIManager {
     async setupDarkMode() {
         const toggle = document.getElementById('dark-mode-toggle');
         if (!toggle) return;
-        const savedMode = window.db ? await window.db.getSetting('darkMode') : 'false';
+        const savedMode = registry.db ? await registry.db.getSetting('darkMode') : 'false';
         const isDark = savedMode === 'true';
         
         if (isDark) {
@@ -405,9 +406,9 @@ class UIManager {
     }
 
     async saveDarkModePreference(isDark) {
-        if (window.db) {
+        if (registry.db) {
             try {
-                await window.db.setSetting('darkMode', isDark.toString());
+                await registry.db.setSetting('darkMode', isDark.toString());
             } catch (error) {
                 // Silenciar errores
             }
@@ -432,9 +433,9 @@ class UIManager {
     }
 
     async loadDarkModePreference() {
-        if (!window.db) return;
+        if (!registry.db) return;
         try {
-            const darkMode = await window.db.getSetting('darkMode', 'false');
+            const darkMode = await registry.db.getSetting('darkMode', 'false');
             if (darkMode === 'true') {
                 document.documentElement.classList.add('dark');
             }
@@ -503,10 +504,10 @@ class UIManager {
     }
 
     async loadAllEntries() {
-        if (!window.db) return;
+        if (!registry.db) return;
         try {
             this.showLoading();
-            const entries = await window.db.getAllEntries();
+            const entries = await registry.db.getAllEntries();
             this.renderEntriesList(entries);
         } catch (error) {
             console.error('Error loading entries:', error);
@@ -561,7 +562,10 @@ class UIManager {
 }
 
 const ui = new UIManager();
-window.ui = ui;
+const isDebugMode = () => new URLSearchParams(window.location.search).get('debug') === 'true';
+if (isDebugMode()) {
+    registry.ui = ui;
+}
 
 document.addEventListener('calendarNeedsRefresh', () => ui.refreshCalendar());
 

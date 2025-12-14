@@ -1,4 +1,5 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
+import registry from '../registry.js';
 
 const PHRASES_BY_TIME = {
     morning: [
@@ -126,13 +127,13 @@ class NotificationService {
      * @param {boolean} enabled - true para activar, false para desactivar
      */
     async toggleNotifications(enabled) {
-        if (!window.db) {
+        if (!registry.db) {
             console.warn('Base de datos no disponible');
             return;
         }
 
         try {
-            await window.db.setSetting('notificationsEnabled', enabled.toString());
+            await registry.db.setSetting('notificationsEnabled', enabled.toString());
 
             if (enabled) {
                 await this.scheduleNotifications();
@@ -152,13 +153,13 @@ class NotificationService {
      * @param {string} time - La hora en formato HH:MM
      */
     async setNotificationTime(time) {
-        if (!window.db) {
+        if (!registry.db) {
             console.warn('Base de datos no disponible');
             return;
         }
 
         try {
-            await window.db.setSetting('notificationTime', time);
+            await registry.db.setSetting('notificationTime', time);
             await this.scheduleNotifications();
             this.showMessage(`Recordatorio programado para las ${time}`, 'success');
         } catch (error) {
@@ -172,10 +173,10 @@ class NotificationService {
      * @returns {string} - La hora en formato HH:MM
      */
     async getNotificationTime() {
-        if (!window.db) return '20:00';
+        if (!registry.db) return '20:00';
 
         try {
-            return await window.db.getSetting('notificationTime', '20:00') || '20:00';
+            return await registry.db.getSetting('notificationTime', '20:00') || '20:00';
         } catch (error) {
             console.warn('Error obteniendo hora de notificación:', error);
             return '20:00';
@@ -187,10 +188,10 @@ class NotificationService {
      * @returns {string} - true si están habilitadas, false si están deshabilitadas
      */
     async getNotificationsEnabled() {
-        if (!window.db) return 'true';
+        if (!registry.db) return 'true';
 
         try {
-            return await window.db.getSetting('notificationsEnabled', 'true') || 'true';
+            return await registry.db.getSetting('notificationsEnabled', 'true') || 'true';
         } catch (error) {
             console.warn('Error obteniendo estado de notificaciones:', error);
             return 'true';
@@ -203,8 +204,8 @@ class NotificationService {
      * @param {string} type - El tipo de mensaje (success, info, error)
      */
     showMessage(message, type) {
-        if (window.ui && typeof window.ui.showToast === 'function') {
-            window.ui.showToast(message, type);
+        if (registry.ui && typeof registry.ui.showToast === 'function') {
+            registry.ui.showToast(message, type);
         } else {
             console.log(`[${type.toUpperCase()}] ${message}`);
         }

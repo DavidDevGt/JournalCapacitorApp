@@ -1,4 +1,5 @@
 import { formatDate, formatDateForStorage, fromISODate } from '../helpers.js';
+import registry from '../registry.js';
 
 export class CalendarManager {
     static DAY_HEADERS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -93,12 +94,12 @@ export class CalendarManager {
         this.#clearCacheData();
         
         try {
-            if (!window.db?.isInitialized) {
+            if (!registry.db?.isInitialized) {
                 this.#updateCacheMetadata(monthKey, now);
                 return this.#cachedEntries;
             }
 
-            const monthEntries = await window.db.getEntriesForMonth(year, month);
+            const monthEntries = await registry.db.getEntriesForMonth(year, month);
             
             if (!Array.isArray(monthEntries)) {
                 console.warn('getEntriesForMonth no devolvió un array:', monthEntries);

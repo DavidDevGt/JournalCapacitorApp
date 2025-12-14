@@ -3,6 +3,7 @@ import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { generateImportConfirmHTML, createModalWithCleanup } from './helpers.js';
 import NotificationService from './services/notification-service.js';
+import registry from './registry.js';
 
 class JournalManager {
     constructor() {
@@ -82,9 +83,9 @@ class JournalManager {
         const todayNavBtn = document.getElementById('nav-today-btn');
         if (todayNavBtn) {
             todayNavBtn.addEventListener('click', async () => {
-                if (window.ui && typeof window.ui.selectDate === 'function') {
+                if (registry.ui && typeof registry.ui.selectDate === 'function') {
                     const today = new Date();
-                    window.ui.selectDate(today);
+                    registry.ui.selectDate(today);
                 } else {
                     await this.loadTodayEntry(); // Fallback mínimo
                 }
@@ -112,8 +113,8 @@ class JournalManager {
             this.markUnsaved();
             this.scheduleAutoSave();
 
-            if (window.ui) {
-                window.ui.showToast(`Estado de ánimo: ${mood}`, 'success', 2000);
+            if (registry.ui) {
+                registry.ui.showToast(`Estado de ánimo: ${mood}`, 'success', 2000);
             }
         } catch (error) {
             console.error('Error selecting mood:', error);
@@ -130,7 +131,7 @@ class JournalManager {
     }
 
     scheduleAutoMoodDetection(text) {
-        const settings = window.getSettings ? window.getSettings() : { autoMoodDetection: true };
+        const settings = registry.getSettings ? registry.getSettings() : { autoMoodDetection: true };
 
         if (!settings.autoMoodDetection || !this.sentimentAnalyzer) {
             return;
@@ -156,7 +157,7 @@ class JournalManager {
         }
 
         try {
-            const settings = window.getSettings ? window.getSettings() : { autoMoodSensitivity: 'medium' };
+            const settings = registry.getSettings ? registry.getSettings() : { autoMoodSensitivity: 'medium' };
             const analysis = this.sentimentAnalyzer.analyze(text);
             this.lastAnalyzedText = text.trim();
 
@@ -236,8 +237,8 @@ class JournalManager {
                 this.currentPhoto = image.dataUrl;
 
                 try {
-                    if (window.ui) {
-                        window.ui.showToast('Optimizando imagen...', 'info', 1000);
+                    if (registry.ui) {
+                        registry.ui.showToast('Optimizando imagen...', 'info', 1000);
                     }
                     this.currentThumbnail = await this.createThumbnail(image.dataUrl);
                 } catch (thumbnailError) {
@@ -249,17 +250,17 @@ class JournalManager {
                 this.scheduleAutoSave();
                 await this.triggerHapticFeedback('medium');
 
-                if (window.ui) {
-                    window.ui.showToast('Foto agregada correctamente', 'success');
+                if (registry.ui) {
+                    registry.ui.showToast('Foto agregada correctamente', 'success');
                 }
             }
         } catch (error) {
             console.error('Error taking photo:', error);
-            if (window.ui) {
+            if (registry.ui) {
                 if (error.message && error.message.includes('cancelled')) {
-                    window.ui.showToast('Operación cancelada', 'info');
+                    registry.ui.showToast('Operación cancelada', 'info');
                 } else {
-                    window.ui.showToast('Error al procesar la foto', 'error');
+                    registry.ui.showToast('Error al procesar la foto', 'error');
                 }
             }
         }
@@ -360,8 +361,8 @@ class JournalManager {
         if (photoContainer && noPhotoDiv && photoImg) {
             photoImg.src = dataUrl;
             photoImg.onclick = () => {
-                if (window.ui) {
-                    window.ui.showImagePreview(dataUrl);
+                if (registry.ui) {
+                    registry.ui.showImagePreview(dataUrl);
                 }
             };
             photoImg.title = 'Clic para ver en pantalla completa';
@@ -384,8 +385,8 @@ class JournalManager {
         this.markUnsaved();
         this.scheduleAutoSave();
 
-        if (window.ui) {
-            window.ui.showToast('Foto eliminada', 'info');
+        if (registry.ui) {
+            registry.ui.showToast('Foto eliminada', 'info');
         }
     }
 
@@ -439,15 +440,15 @@ class JournalManager {
 
 
     async saveEntry(silent = false) {
-        if (!window.db || !window.db.isInitialized) {
-            if (!silent && window.ui) {
-                window.ui.showToast('Base de datos no disponible', 'error');
+        if (!registry.db || !registry.db.isInitialized) {
+            if (!silent && registry.ui) {
+                registry.ui.showToast('Base de datos no disponible', 'error');
             }
             return;
         }
 
         try {
-            const date = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : (() => {
+            const date = registry.ui ? registry.ui.formatDateForStorage(registry.ui.currentDate) : (() => {
                 const d = new Date();
                 const year = d.getFullYear();
                 const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -457,21 +458,21 @@ class JournalManager {
             let content = this.journalTextarea ? this.journalTextarea.value : '';
 
             if (content.length > 5000) {
-                if (window.ui) {
-                    window.ui.showToast('El texto no puede superar los 5000 caracteres', 'warning');
+                if (registry.ui) {
+                    registry.ui.showToast('El texto no puede superar los 5000 caracteres', 'warning');
                 }
                 return;
             }
             content = content.replace(/[<>]/g, '');
 
             if (!content.trim() && !this.currentMood && !this.currentPhoto) {
-                if (!silent && window.ui) {
-                    window.ui.showToast('No hay contenido para guardar', 'warning');
+                if (!silent && registry.ui) {
+                    registry.ui.showToast('No hay contenido para guardar', 'warning');
                 }
                 return;
             }
 
-            const result = await window.db.saveEntry(
+            const result = await registry.db.saveEntry(
                 date,
                 content,
                 this.currentMood,
@@ -486,26 +487,26 @@ class JournalManager {
                 // Notificar actualización del calendario
                 document.dispatchEvent(new Event('calendarNeedsRefresh'));
 
-                if (!silent && window.ui) {
-                    window.ui.showToast('Entrada guardada correctamente', 'success');
+                if (!silent && registry.ui) {
+                    registry.ui.showToast('Entrada guardada correctamente', 'success');
                 }
             } else {
                 throw new Error(result.error || 'Error desconocido');
             }
         } catch (error) {
             console.error('Error saving entry:', error);
-            if (!silent && window.ui) {
-                window.ui.showToast('Error al guardar la entrada', 'error');
+            if (!silent && registry.ui) {
+                registry.ui.showToast('Error al guardar la entrada', 'error');
             }
         }
     }
 
     async loadTodayEntry() {
-        if (!window.db || !window.db.isInitialized) return;
+        if (!registry.db || !registry.db.isInitialized) return;
 
         try {
-            const date = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : new Date().toISOString().split('T')[0];
-            const entry = await window.db.getEntry(date);
+            const date = registry.ui ? registry.ui.formatDateForStorage(registry.ui.currentDate) : new Date().toISOString().split('T')[0];
+            const entry = await registry.db.getEntry(date);
 
             this.loadEntryData(entry);
         } catch (error) {
@@ -514,10 +515,10 @@ class JournalManager {
     }
 
     async loadEntryForDate(date) {
-        if (!window.db || !window.db.isInitialized) return;
+        if (!registry.db || !registry.db.isInitialized) return;
 
         try {
-            const entry = await window.db.getEntry(date);
+            const entry = await registry.db.getEntry(date);
             this.loadEntryData(entry);
         } catch (error) {
             console.error('Error loading entry for date:', error);
@@ -602,7 +603,7 @@ class JournalManager {
     // Métodos auxiliares privados
     _extractEntryData() {
         const content = this.journalTextarea?.value?.trim() || '';
-        const date = window.ui?.formatDate(window.ui.currentDate, 'short') ||
+        const date = registry.ui?.formatDate(registry.ui.currentDate, 'short') ||
             new Date().toLocaleDateString('es-ES', {
                 year: 'numeric',
                 month: 'short',
@@ -760,7 +761,7 @@ class JournalManager {
     }
 
     _showMessage(message, type) {
-        window.ui?.showToast(message, type);
+        registry.ui?.showToast(message, type);
     }
 
     async setupNotifications() {
@@ -793,10 +794,10 @@ class JournalManager {
 
     // Statistics and analytics
     async getWritingStats() {
-        if (!window.db) return null;
+        if (!registry.db) return null;
 
         try {
-            const stats = await window.db.getStats();
+            const stats = await registry.db.getStats();
             return {
                 ...stats,
                 averageWordsPerEntry: stats.totalEntries > 0 ? Math.round(stats.totalWords / stats.totalEntries) : 0
@@ -808,33 +809,33 @@ class JournalManager {
     }
 
     async deleteEntry(date) {
-        if (!window.db || !confirm('¿Estás seguro de que quieres eliminar esta entrada?')) {
+        if (!registry.db || !confirm('¿Estás seguro de que quieres eliminar esta entrada?')) {
             return;
         }
 
         try {
-            const result = await window.db.deleteEntry(date);
+            const result = await registry.db.deleteEntry(date);
 
             if (result.success) {
                 await this.triggerHapticFeedback('medium');
-                if (window.ui) {
-                    window.ui.showToast('Entrada eliminada', 'success');
-                    window.ui.loadAllEntries(); // Refresh entries list
+                if (registry.ui) {
+                    registry.ui.showToast('Entrada eliminada', 'success');
+                    registry.ui.loadAllEntries(); // Refresh entries list
                 }
 
                 // Notificar actualización del calendario
                 document.dispatchEvent(new Event('calendarNeedsRefresh'));
 
                 // If deleting current day's entry, clear the form
-                const currentDate = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : new Date().toISOString().split('T')[0];
+                const currentDate = registry.ui ? registry.ui.formatDateForStorage(registry.ui.currentDate) : new Date().toISOString().split('T')[0];
                 if (date === currentDate) {
                     this.loadEntryData(null);
                 }
             }
         } catch (error) {
             console.error('Error deleting entry:', error);
-            if (window.ui) {
-                window.ui.showToast('Error al eliminar la entrada', 'error');
+            if (registry.ui) {
+                registry.ui.showToast('Error al eliminar la entrada', 'error');
             }
         }
     }
@@ -844,19 +845,19 @@ class JournalManager {
      * Permite al usuario elegir dónde guardar el archivo
      */
     async exportEntries() {
-        if (!window.db) {
+        if (!registry.db) {
             console.warn('Database not available for export');
             return;
         }
 
         try {
             // Mostrar indicador de carga
-            if (window.ui) {
-                window.ui.showToast('Preparando backup...', 'info', 1000);
+            if (registry.ui) {
+                registry.ui.showToast('Preparando backup...', 'info', 1000);
             }
 
             // Obtener datos de la base de datos
-            const data = await window.db.exportData();
+            const data = await registry.db.exportData();
             if (!data) {
                 throw new Error('No hay datos para exportar');
             }
@@ -867,7 +868,25 @@ class JournalManager {
             const fileName = `journal-backup-${timestamp}.json`;
             const jsonString = JSON.stringify(data, null, 2);
 
-            // Importar módulos de Capacitor
+            // Importar Capacitor para detectar plataforma
+            const { Capacitor } = await import('@capacitor/core');
+
+            // Fallback para web: descargar directamente
+            if (!Capacitor.isNativePlatform()) {
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+                if (registry.ui) {
+                    registry.ui.showToast(`Backup descargado como ${fileName}`, 'success');
+                }
+                return;
+            }
+
+            // Importar módulos de Capacitor para móvil
             const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
 
             // Intentar usar SAF para que el usuario elija ubicación
@@ -882,14 +901,14 @@ class JournalManager {
                         encoding: Encoding.UTF8
                     });
 
-                    if (window.ui) {
-                        window.ui.showToast(`Backup guardado como ${fileName}`, 'success');
+                    if (registry.ui) {
+                        registry.ui.showToast(`Backup guardado como ${fileName}`, 'success');
                     }
                     return;
                 } else {
                     // Usuario canceló la selección de directorio
-                    if (window.ui) {
-                        window.ui.showToast('Exportación cancelada', 'info');
+                    if (registry.ui) {
+                        registry.ui.showToast('Exportación cancelada', 'info');
                     }
                     return;
                 }
@@ -900,8 +919,8 @@ class JournalManager {
             }
         } catch (error) {
             console.error('Error exporting entries:', error);
-            if (window.ui) {
-                window.ui.showToast('Error al exportar el backup', 'error');
+            if (registry.ui) {
+                registry.ui.showToast('Error al exportar el backup', 'error');
             }
         }
     }
@@ -919,8 +938,8 @@ class JournalManager {
                 encoding: Encoding.UTF8
             });
 
-            if (window.ui) {
-                window.ui.showToast(`Backup guardado en Documentos/${fileName}`, 'success');
+            if (registry.ui) {
+                registry.ui.showToast(`Backup guardado en Documentos/${fileName}`, 'success');
             }
         } catch (documentsError) {
             console.warn('Error writing to Documents directory:', documentsError);
@@ -934,8 +953,8 @@ class JournalManager {
                     encoding: Encoding.UTF8
                 });
 
-                if (window.ui) {
-                    window.ui.showToast(`Backup guardado en Datos/${fileName}`, 'success');
+                if (registry.ui) {
+                    registry.ui.showToast(`Backup guardado en Datos/${fileName}`, 'success');
                 }
             } catch (dataError) {
                 console.error('Error writing to Data directory:', dataError);
@@ -949,9 +968,9 @@ class JournalManager {
      * Permite al usuario seleccionar el archivo a importar
      */
     async importEntries() {
-        if (!window.db) {
-            if (window.ui) {
-                window.ui.showToast('No se pudo acceder a la base de datos', 'error');
+        if (!registry.db) {
+            if (registry.ui) {
+                registry.ui.showToast('No se pudo acceder a la base de datos', 'error');
             }
             return;
         }
@@ -960,13 +979,31 @@ class JournalManager {
             // Confirmar importación antes de seleccionar archivo
             const confirmed = await this._confirmImport();
             if (!confirmed) {
-                if (window.ui) {
-                    window.ui.showToast('Importación cancelada', 'info');
+                if (registry.ui) {
+                    registry.ui.showToast('Importación cancelada', 'info');
                 }
                 return;
             }
 
-            // Importar módulos de Capacitor
+            // Importar Capacitor para detectar plataforma
+            const { Capacitor } = await import('@capacitor/core');
+
+            // Fallback para web: usar input file
+            if (!Capacitor.isNativePlatform()) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        await this.importEntriesFromFile(file);
+                    }
+                };
+                input.click();
+                return;
+            }
+
+            // Importar módulos de Capacitor para móvil
             const { Filesystem } = await import('@capacitor/filesystem');
 
             // Usar SAF para seleccionar archivo
@@ -978,8 +1015,8 @@ class JournalManager {
 
             if (!result || !result.files || result.files.length === 0) {
                 // Usuario canceló la selección
-                if (window.ui) {
-                    window.ui.showToast('Importación cancelada', 'info');
+                if (registry.ui) {
+                    registry.ui.showToast('Importación cancelada', 'info');
                 }
                 return;
             }
@@ -993,22 +1030,22 @@ class JournalManager {
             const data = await this._processImportData(file);
 
             // Importar a la base de datos
-            const importResult = await window.db.importData(data);
+            const importResult = await registry.db.importData(data);
 
             if (importResult.success) {
                 await this.loadTodayEntry();
-                if (window.ui) {
+                if (registry.ui) {
                     const message = importResult.message || 'Datos importados correctamente';
-                    window.ui.showToast(message, 'success');
-                    window.ui.loadAllEntries();
+                    registry.ui.showToast(message, 'success');
+                    registry.ui.loadAllEntries();
                 }
             } else {
                 throw new Error(importResult.error || 'Error desconocido durante la importación');
             }
         } catch (error) {
             console.error('Error importing entries:', error);
-            if (window.ui) {
-                window.ui.showToast(error.message || 'Error al importar los datos', 'error');
+            if (registry.ui) {
+                registry.ui.showToast(error.message || 'Error al importar los datos', 'error');
             }
         }
     }
@@ -1112,9 +1149,9 @@ class JournalManager {
      * @deprecated Usar importEntries() en su lugar
      */
     async importEntriesFromFile(file) {
-        if (!window.db || !file) {
-            if (window.ui) {
-                window.ui.showToast('No se pudo acceder a la base de datos o archivo', 'error');
+        if (!registry.db || !file) {
+            if (registry.ui) {
+                registry.ui.showToast('No se pudo acceder a la base de datos o archivo', 'error');
             }
             return;
         }
@@ -1135,29 +1172,29 @@ class JournalManager {
             // Confirmar importación
             const confirmed = await this._confirmImport(data);
             if (!confirmed) {
-                if (window.ui) {
-                    window.ui.showToast('Importación cancelada', 'info');
+                if (registry.ui) {
+                    registry.ui.showToast('Importación cancelada', 'info');
                 }
                 return;
             }
 
             // Importar a la base de datos
-            const result = await window.db.importData(data);
+            const result = await registry.db.importData(data);
 
             if (result.success) {
                 await this.loadTodayEntry();
-                if (window.ui) {
+                if (registry.ui) {
                     const message = result.message || 'Datos importados correctamente';
-                    window.ui.showToast(message, 'success');
-                    window.ui.loadAllEntries();
+                    registry.ui.showToast(message, 'success');
+                    registry.ui.loadAllEntries();
                 }
             } else {
                 throw new Error(result.error || 'Error desconocido durante la importación');
             }
         } catch (error) {
             console.error('Error importing entries:', error);
-            if (window.ui) {
-                window.ui.showToast(error.message || 'Error al importar los datos', 'error');
+            if (registry.ui) {
+                registry.ui.showToast(error.message || 'Error al importar los datos', 'error');
             }
         }
     }
@@ -1228,10 +1265,10 @@ class JournalManager {
     }
 
     async generateMissingThumbnails() {
-        if (!window.db) return;
+        if (!registry.db) return;
 
         try {
-            const entries = await window.db.getAllEntries(1000); // Get more entries for processing
+            const entries = await registry.db.getAllEntries(1000); // Get more entries for processing
             let processed = 0;
             let generated = 0;
 
@@ -1243,7 +1280,7 @@ class JournalManager {
                         const photoPath = entry.photo_path || entry.photoPath;
                         const thumbnail = await this.createThumbnail(photoPath);
 
-                        await window.db.saveEntry(
+                        await registry.db.saveEntry(
                             entry.date,
                             entry.content,
                             entry.mood,
@@ -1260,9 +1297,9 @@ class JournalManager {
             }
 
             if (generated > 0) {
-                if (window.ui) {
-                    window.ui.showToast(`Optimizadas ${generated} imágenes`, 'success');
-                    window.ui.loadAllEntries(); // Refresh entries list
+                if (registry.ui) {
+                    registry.ui.showToast(`Optimizadas ${generated} imágenes`, 'success');
+                    registry.ui.loadAllEntries(); // Refresh entries list
                 }
             }
         } catch (error) {
@@ -1276,7 +1313,7 @@ class JournalManager {
      */
     handleEntryDeletion(deletedDate) {
         // Verificar si la entrada eliminada es la que está actualmente cargada
-        const currentDate = window.ui ? window.ui.formatDateForStorage(window.ui.currentDate) : new Date().toISOString().split('T')[0];
+        const currentDate = registry.ui ? registry.ui.formatDateForStorage(registry.ui.currentDate) : new Date().toISOString().split('T')[0];
         
         if (deletedDate === currentDate) {
             // Si se eliminó la entrada actual, limpiar el estado

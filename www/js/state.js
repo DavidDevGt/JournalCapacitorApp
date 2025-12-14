@@ -188,5 +188,8 @@ state.on('journal.currentEntry', () => {
     state.set('journal.hasUnsavedChanges', true);
 });
 
-window.state = state;
+const isDebugMode = () => new URLSearchParams(window.location.search).get('debug') === 'true';
+if (isDebugMode()) {
+    window.state = state;
+}
 export default state;

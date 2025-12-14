@@ -87,6 +87,11 @@ graph TD
    - Uso mínimo de permisos necesarios
    - Explicación clara de por qué se necesitan permisos
 
+5. **APIs Globales**:
+   - Exposición limitada a modo debug
+   - Uso de parámetro URL ?debug=true para control
+   - Prevención de manipulación por XSS
+
 ### Protección de Código
 
 1. **Minificación y Ofuscación**:
@@ -182,6 +187,7 @@ flowchart TD
 |----|-------------|-------------|-----|
 | SEC-2024-001 | Inyección SQL | v1.3.1 | - |
 | SEC-2024-002 | XSS | v1.3.1 | - |
+| SEC-2024-004 | Exposición de APIs globales inseguras | v1.4.0 | - |
 
 ## Política de Divulgación de Vulnerabilidades
 

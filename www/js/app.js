@@ -1,6 +1,7 @@
 import db from './database.js';
 import ui from './ui.js';
 import journal from './journal.js';
+import registry from './registry.js';
 import {
     initializeCapacitor,
     handleResize,
@@ -44,6 +45,12 @@ const SELECTORS = {
     CLOSE_ABOUT: '#close-about',
     CLOSE_ICON: '#close-icon'
 };
+
+/**
+ * Check if debug mode is enabled via URL parameter
+ * @returns {boolean}
+ */
+const isDebugMode = () => new URLSearchParams(window.location.search).get('debug') === 'true';
 
 /**
  * Main application class for Daily Journal
@@ -113,18 +120,24 @@ class DailyJournalApp {
 
         // Initialize database
         await db.init();
+        registry.db = db;
         this.#exposeGlobalAPI('db', db);
 
         // Initialize UI
         ui.init();
+        registry.ui = ui;
         this.#exposeGlobalAPI('ui', ui);
         await ui.loadDarkModePreference();
 
         // Initialize journal
         await journal.init();
+        registry.journal = journal;
         this.#exposeGlobalAPI('journal', journal);
 
         // Expose settings functions
+        registry.getSettings = getSettings;
+        registry.getSettingsAsync = getSettingsAsync;
+        registry.saveSettings = saveSettings;
         this.#exposeGlobalAPI('getSettings', getSettings);
         this.#exposeGlobalAPI('getSettingsAsync', getSettingsAsync);
         this.#exposeGlobalAPI('saveSettings', saveSettings);
@@ -445,12 +458,15 @@ class DailyJournalApp {
     }
 
     /**
-     * Expose API globally with proper error handling
-     * @param {string} name 
-     * @param {*} api 
+     * Expose API globally with proper error handling, only in debug mode
+     * @param {string} name
+     * @param {*} api
      * @private
      */
     #exposeGlobalAPI(name, api) {
+        if (!isDebugMode()) {
+            return;
+        }
         try {
             window[name] = api;
         } catch (error) {
@@ -595,7 +611,9 @@ class AppBootstrap {
     static async initialize() {
         try {
             const app = new DailyJournalApp();
-            window.app = app;
+            if (isDebugMode()) {
+                window.app = app;
+            }
 
             await app.init();
 

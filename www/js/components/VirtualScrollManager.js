@@ -1,6 +1,7 @@
 import { formatDate, formatDateForStorage, fromISODate } from '../helpers.js';
 import { APP_CONSTANTS } from '../constants/index.js';
 import DOMPurify from 'dompurify';
+import registry from '../registry.js';
 
 export class VirtualScrollManager {
     constructor(uiManager) {
@@ -196,11 +197,10 @@ export class VirtualScrollManager {
 
         const photoDisplay = thumbnailPath ? `
         <div class="entry-photo-compact relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700 w-10 h-10 flex-shrink-0">
-            <img src="${thumbnailPath}" 
-                alt="Foto" 
-                class="w-full h-full object-cover" 
-                loading="lazy"
-                onclick="event.stopPropagation(); ui.showImagePreview('${photoPath || thumbnailPath}')">
+            <img src="${thumbnailPath}"
+                alt="Foto"
+                class="w-full h-full object-cover"
+                loading="lazy">
         </div>` : '';
 
         const timeAgo = this.getTimeAgo(date);
@@ -210,7 +210,6 @@ export class VirtualScrollManager {
 
         itemElement.innerHTML = `
         <div class="entry-card-compact group relative bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 cursor-pointer transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-600 h-full overflow-hidden"
-            onclick="ui.selectDate('${entry.date}')"
             style="min-height: 80px;">
             
             <div class="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-l-lg"></div>
@@ -239,6 +238,20 @@ export class VirtualScrollManager {
             </div>
         </div>
 `;
+
+        // Add event listeners for the card and image
+        const cardElement = itemElement.querySelector('.entry-card-compact');
+        if (cardElement) {
+            cardElement.addEventListener('click', () => this.ui.selectDate(entry.date));
+        }
+
+        const imgElement = itemElement.querySelector('img');
+        if (imgElement) {
+            imgElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.ui.showImagePreview(photoPath || thumbnailPath);
+            });
+        }
 
         let startX = 0;
         let currentX = 0;
@@ -301,15 +314,15 @@ export class VirtualScrollManager {
     async handleDeleteEntry(index) {
         const entry = this.filteredEntries[index];
         if (!entry || !entry.date) {
-            if (window.ui && typeof window.ui.showToast === 'function') {
-                window.ui.showToast('No se pudo eliminar la entrada (sin fecha)', 'error');
+            if (this.ui && typeof this.ui.showToast === 'function') {
+                this.ui.showToast('No se pudo eliminar la entrada (sin fecha)', 'error');
             }
             return;
         }
         
         try {
-            if (window.db && typeof window.db.deleteEntry === 'function') {
-                const result = await window.db.deleteEntry(entry.date);
+            if (registry.db && typeof registry.db.deleteEntry === 'function') {
+                const result = await registry.db.deleteEntry(entry.date);
                 if (!result || result.success === false) {
                     throw (result && result.error) || new Error('Error desconocido al eliminar');
                 }
@@ -325,13 +338,13 @@ export class VirtualScrollManager {
             // Notificar actualización del calendario
             document.dispatchEvent(new Event('calendarNeedsRefresh'));
             
-            if (window.ui && typeof window.ui.showToast === 'function') {
-                window.ui.showToast('Entrada eliminada', 'success');
+            if (this.ui && typeof this.ui.showToast === 'function') {
+                this.ui.showToast('Entrada eliminada', 'success');
             }
         } catch (error) {
             console.error('Error eliminando entrada:', error);
-            if (window.ui && typeof window.ui.showToast === 'function') {
-                window.ui.showToast('Error al eliminar la entrada', 'error');
+            if (this.ui && typeof this.ui.showToast === 'function') {
+                this.ui.showToast('Error al eliminar la entrada', 'error');
             }
         }
     }
@@ -346,12 +359,12 @@ export class VirtualScrollManager {
         });
         document.dispatchEvent(deletionEvent);
         
-        if (window.journal && typeof window.journal.handleEntryDeletion === 'function') {
-            window.journal.handleEntryDeletion(deletedDate);
+        if (registry.journal && typeof registry.journal.handleEntryDeletion === 'function') {
+            registry.journal.handleEntryDeletion(deletedDate);
         }
-        
-        if (window.ui && typeof window.ui.handleEntryDeletion === 'function') {
-            window.ui.handleEntryDeletion(deletedDate);
+
+        if (this.ui && typeof this.ui.handleEntryDeletion === 'function') {
+            this.ui.handleEntryDeletion(deletedDate);
         }
     }
 

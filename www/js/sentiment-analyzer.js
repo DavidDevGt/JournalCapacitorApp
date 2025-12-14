@@ -446,5 +446,8 @@ class SentimentAnalyzer {
 export default SentimentAnalyzer;
 
 if (typeof window !== 'undefined') {
-    window.SentimentAnalyzer = SentimentAnalyzer;
+    const isDebugMode = () => new URLSearchParams(window.location.search).get('debug') === 'true';
+    if (isDebugMode()) {
+        window.SentimentAnalyzer = SentimentAnalyzer;
+    }
 }
