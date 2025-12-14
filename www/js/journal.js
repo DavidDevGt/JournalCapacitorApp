@@ -1,7 +1,7 @@
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { formatDate, formatDateForStorage, fromISODate } from './helpers.js';
+import { formatDate, formatDateForStorage, fromISODate, generateImportConfirmHTML, createModalWithCleanup } from './helpers.js';
 import NotificationService from './services/notification-service.js';
 
 class JournalManager {
@@ -983,6 +983,15 @@ class JournalManager {
             // Procesar datos
             const data = await this._processImportData(file);
 
+            // Confirmar importación
+            const confirmed = await this._confirmImport(data);
+            if (!confirmed) {
+                if (window.ui) {
+                    window.ui.showToast('Importación cancelada', 'info');
+                }
+                return;
+            }
+
             // Importar a la base de datos
             const importResult = await window.db.importData(data);
 
@@ -1047,6 +1056,58 @@ class JournalManager {
     }
 
     /**
+     * Confirma la importación de datos
+     * @private
+     */
+    async _confirmImport(data) {
+        return new Promise((resolve) => {
+            const importHTML = generateImportConfirmHTML();
+            const modal = createModalWithCleanup(importHTML, (modal) => {
+                const confirmBtn = document.getElementById('confirm-import-btn');
+                const cancelBtn = document.getElementById('cancel-import-btn');
+                const closeBtn = document.getElementById('close-import-confirm');
+
+                const cleanup = () => {
+                    if (modal && document.body.contains(modal)) {
+                        document.body.removeChild(modal);
+                    }
+                };
+
+                const resolveAndCleanup = (result) => {
+                    cleanup();
+                    resolve(result);
+                };
+
+                if (confirmBtn) {
+                    confirmBtn.addEventListener('click', () => resolveAndCleanup(true));
+                }
+
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => resolveAndCleanup(false));
+                }
+
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => resolveAndCleanup(false));
+                }
+
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        resolveAndCleanup(false);
+                    }
+                });
+
+                const handleEscape = (e) => {
+                    if (e.key === 'Escape') {
+                        resolveAndCleanup(false);
+                        document.removeEventListener('keydown', handleEscape);
+                    }
+                };
+                document.addEventListener('keydown', handleEscape);
+            });
+        });
+    }
+
+    /**
      * Método legacy para compatibilidad con input file
      * @deprecated Usar importEntries() en su lugar
      */
@@ -1070,6 +1131,15 @@ class JournalManager {
             const data = await this._processImportData({
                 data: await file.text()
             });
+
+            // Confirmar importación
+            const confirmed = await this._confirmImport(data);
+            if (!confirmed) {
+                if (window.ui) {
+                    window.ui.showToast('Importación cancelada', 'info');
+                }
+                return;
+            }
 
             // Importar a la base de datos
             const result = await window.db.importData(data);

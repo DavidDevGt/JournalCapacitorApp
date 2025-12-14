@@ -410,11 +410,11 @@ export const handleInitializationError = (error) => {
 export const generateExportConfirmHTML = () => `
     <div id="export-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-6 animate-fadeIn">
         <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-lg text-center transform animate-slideUp border border-gray-200 dark:border-gray-700 space-y-6">
-        
+
             <button id="close-export-confirm" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none focus:outline-none transition-colors duration-200">
                 &times;
             </button>
-            
+
             <div class="mt-4 mb-2">
                 <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg rounded-full bg-white dark:bg-gradient-to-br dark:from-indigo-500 dark:to-violet-600">
                     <svg class="w-12 h-12" fill="none" viewBox="0 0 24 24">
@@ -427,34 +427,90 @@ export const generateExportConfirmHTML = () => `
                     Exportar Diario
                 </h3>
             </div>
-            
+
             <div class="space-y-6 text-center">
                 <div class="bg-white dark:bg-gray-700 p-4 mx-auto max-w-prose border border-gray-200 dark:border-gray-600 shadow-sm">
                     <p class="text-gray-900 dark:text-gray-300 leading-relaxed">
                         Se creará un archivo de respaldo completo con todas tus entradas, configuraciones y datos del diario. Este proceso puede tardar unos segundos.
                     </p>
                 </div>
-                
+
                 <div class="flex flex-row gap-4 pt-4 justify-center items-center">
                     <button id="cancel-export-btn" class="flex-1 py-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:ring-opacity-50 transform hover:scale-[1.02] active:scale-[0.98] min-w-[120px] max-w-[180px] shadow-sm">
                         Cancelar
                     </button>
-                    <button id="confirm-export-btn" class="flex-1 py-3 
-                        bg-indigo-100 text-indigo-900 
-                        dark:bg-indigo-700 dark:text-white 
-                        hover:bg-indigo-200 dark:hover:bg-indigo-800 
-                        font-semibold text-lg 
-                        transition-all duration-200 focus:outline-none 
-                        focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 
-                        shadow-sm hover:shadow-md transform hover:scale-[1.03] active:scale-[0.98] 
+                    <button id="confirm-export-btn" class="flex-1 py-3
+                        bg-indigo-100 text-indigo-900
+                        dark:bg-indigo-700 dark:text-white
+                        hover:bg-indigo-200 dark:hover:bg-indigo-800
+                        font-semibold text-lg
+                        transition-all duration-200 focus:outline-none
+                        focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50
+                        shadow-sm hover:shadow-md transform hover:scale-[1.03] active:scale-[0.98]
                         flex items-center justify-center gap-2 min-w-[120px] max-w-[180px]">
-                        
+
                         <svg class="w-5 h-5 text-inherit" fill="none" viewBox="0 0 24 24">
                             <path d="M12 8v5m0 0l-2-2m2 2l2-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M8 16h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
 
                         <span class="drop-shadow-sm">Exportar</span>
+                    </button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+`;
+
+export const generateImportConfirmHTML = () => `
+    <div id="import-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-6 animate-fadeIn">
+        <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-lg text-center transform animate-slideUp border border-gray-200 dark:border-gray-700 space-y-6">
+
+            <button id="close-import-confirm" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none focus:outline-none transition-colors duration-200">
+                &times;
+            </button>
+
+            <div class="mt-4 mb-2">
+                <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg rounded-full bg-white dark:bg-gradient-to-br dark:from-green-500 dark:to-emerald-600">
+                    <svg class="w-12 h-12" fill="none" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="18" height="18" rx="3" fill="#fff" class="dark:fill-none" stroke="#16a34a" stroke-width="2" class="dark:stroke-white"/>
+                        <path d="M12 8v5m0 0l-2 2m2-2l2 2" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:stroke-white"/>
+                        <path d="M8 12h8" stroke="#16a34a" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-bold mb-2 bg-gradient-to-r from-green-900 to-emerald-900 dark:from-green-600 dark:to-emerald-600 bg-clip-text text-transparent">
+                    Importar Diario
+                </h3>
+            </div>
+
+            <div class="space-y-6 text-center">
+                <div class="bg-white dark:bg-gray-700 p-4 mx-auto max-w-prose border border-gray-200 dark:border-gray-600 shadow-sm">
+                    <p class="text-gray-900 dark:text-gray-300 leading-relaxed">
+                        ¿Estás seguro de que quieres importar estos datos? Se sobrescribirán las entradas existentes con la misma fecha.
+                    </p>
+                </div>
+
+                <div class="flex flex-row gap-4 pt-4 justify-center items-center">
+                    <button id="cancel-import-btn" class="flex-1 py-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-200 focus:ring-opacity-50 transform hover:scale-[1.02] active:scale-[0.98] min-w-[120px] max-w-[180px] shadow-sm">
+                        Cancelar
+                    </button>
+                    <button id="confirm-import-btn" class="flex-1 py-3
+                        bg-green-100 text-green-900
+                        dark:bg-green-700 dark:text-white
+                        hover:bg-green-200 dark:hover:bg-green-800
+                        font-semibold text-lg
+                        transition-all duration-200 focus:outline-none
+                        focus:ring-2 focus:ring-green-500 focus:ring-opacity-50
+                        shadow-sm hover:shadow-md transform hover:scale-[1.03] active:scale-[0.98]
+                        flex items-center justify-center gap-2 min-w-[120px] max-w-[180px]">
+
+                        <svg class="w-5 h-5 text-inherit" fill="none" viewBox="0 0 24 24">
+                            <path d="M12 8v5m0 0l-2 2m2-2l2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+
+                        <span class="drop-shadow-sm">Importar</span>
                     </button>
 
                 </div>
