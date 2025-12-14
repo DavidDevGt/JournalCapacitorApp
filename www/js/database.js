@@ -594,6 +594,7 @@ class DatabaseManager {
             if (entry.tags) {
                 try {
                     entry.tags = JSON.parse(entry.tags);
+                    this._validateNoPrototypeKeys(entry.tags);
                 } catch {
                     entry.tags = [];
                 }
@@ -642,6 +643,23 @@ class DatabaseManager {
             localStorage.setItem(`${DatabaseManager.STORAGE_PREFIX}entries`, '{}');
         } catch (error) {
             console.error('Error resetting stored entries:', error);
+        }
+    }
+
+    /**
+     * Valida que el objeto no contenga claves peligrosas para Prototype Pollution
+     * @private
+     */
+    _validateNoPrototypeKeys(obj, path = '') {
+        if (typeof obj !== 'object' || obj === null) return;
+
+        const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
+
+        for (const key in obj) {
+            if (dangerousKeys.includes(key)) {
+                throw new Error(`Prohibited key found at ${path}${key}`);
+            }
+            this._validateNoPrototypeKeys(obj[key], `${path}${key}.`);
         }
     }
 
@@ -820,6 +838,7 @@ class DatabaseManager {
         await this._ensureInitialized();
 
         try {
+            this._validateNoPrototypeKeys(data);
             this._validateImportData(data);
 
             let importedCount = 0;
