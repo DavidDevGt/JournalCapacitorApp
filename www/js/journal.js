@@ -1,7 +1,7 @@
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { formatDate, formatDateForStorage, fromISODate, generateImportConfirmHTML, createModalWithCleanup } from './helpers.js';
+import { generateImportConfirmHTML, createModalWithCleanup } from './helpers.js';
 import NotificationService from './services/notification-service.js';
 
 class JournalManager {

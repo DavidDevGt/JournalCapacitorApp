@@ -1,4 +1,3 @@
-import { App } from '@capacitor/app';
 import { APP_CONSTANTS } from './constants/index.js';
 
 class SentimentAnalyzer {
