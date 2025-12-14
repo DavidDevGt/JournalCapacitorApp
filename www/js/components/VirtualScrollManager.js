@@ -231,7 +231,7 @@ export class VirtualScrollManager {
                     </div>
                 </div>
 
-                <div class="flex-1">
+                <div class="mt-2">
                     <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-2">
                         ${preview}
                     </p>
