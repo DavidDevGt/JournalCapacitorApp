@@ -474,9 +474,9 @@ export const generateImportConfirmHTML = () => `
             <div class="mt-4 mb-2">
                 <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg rounded-full bg-white dark:bg-gradient-to-br dark:from-green-500 dark:to-emerald-600">
                     <svg class="w-12 h-12" fill="none" viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="18" height="18" rx="3" fill="#fff" class="dark:fill-none" stroke="#16a34a" stroke-width="2" class="dark:stroke-white"/>
-                        <path d="M12 8v5m0 0l-2 2m2-2l2 2" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:stroke-white"/>
-                        <path d="M8 12h8" stroke="#16a34a" stroke-width="2" stroke-linecap="round"/>
+                        <rect x="3" y="3" width="18" height="18" rx="3" fill="#fff" class="dark:fill-none" stroke="#444" stroke-width="2" class="dark:stroke-white"/>
+                        <path d="M12 16v-5m0 0l-2 2m2-2l2 2" stroke="#444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:stroke-white"/>
+                        <path d="M8 8h8" stroke="#444" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
                 <h3 class="text-2xl font-bold mb-2 bg-gradient-to-r from-green-900 to-emerald-900 dark:from-green-600 dark:to-emerald-600 bg-clip-text text-transparent">
@@ -487,7 +487,7 @@ export const generateImportConfirmHTML = () => `
             <div class="space-y-6 text-center">
                 <div class="bg-white dark:bg-gray-700 p-4 mx-auto max-w-prose border border-gray-200 dark:border-gray-600 shadow-sm">
                     <p class="text-gray-900 dark:text-gray-300 leading-relaxed">
-                        ¿Estás seguro de que quieres importar estos datos? Se sobrescribirán las entradas existentes con la misma fecha.
+                        ¿Estás seguro de que quieres importar datos al diario? Esto puede sobrescribir entradas existentes.
                     </p>
                 </div>
 
@@ -505,9 +505,22 @@ export const generateImportConfirmHTML = () => `
                         shadow-sm hover:shadow-md transform hover:scale-[1.03] active:scale-[0.98]
                         flex items-center justify-center gap-2 min-w-[120px] max-w-[180px]">
 
-                        <svg class="w-5 h-5 text-inherit" fill="none" viewBox="0 0 24 24">
-                            <path d="M12 8v5m0 0l-2 2m2-2l2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <svg class="w-12 h-12" fill="none" viewBox="0 0 24 24">
+                            <path
+                                d="M12 16v-5m0 0l-2 2m2-2l2 2"
+                                stroke="#444"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="dark:stroke-white"
+                            />
+                            <path
+                                d="M8 8h8"
+                                stroke="#444"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                class="dark:stroke-white"
+                            />
                         </svg>
 
                         <span class="drop-shadow-sm">Importar</span>

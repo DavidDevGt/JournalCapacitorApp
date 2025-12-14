@@ -957,6 +957,15 @@ class JournalManager {
         }
 
         try {
+            // Confirmar importación antes de seleccionar archivo
+            const confirmed = await this._confirmImport();
+            if (!confirmed) {
+                if (window.ui) {
+                    window.ui.showToast('Importación cancelada', 'info');
+                }
+                return;
+            }
+
             // Importar módulos de Capacitor
             const { Filesystem } = await import('@capacitor/filesystem');
 
@@ -982,15 +991,6 @@ class JournalManager {
 
             // Procesar datos
             const data = await this._processImportData(file);
-
-            // Confirmar importación
-            const confirmed = await this._confirmImport(data);
-            if (!confirmed) {
-                if (window.ui) {
-                    window.ui.showToast('Importación cancelada', 'info');
-                }
-                return;
-            }
 
             // Importar a la base de datos
             const importResult = await window.db.importData(data);
@@ -1059,7 +1059,7 @@ class JournalManager {
      * Confirma la importación de datos
      * @private
      */
-    async _confirmImport(data) {
+    async _confirmImport() {
         return new Promise((resolve) => {
             const importHTML = generateImportConfirmHTML();
             const modal = createModalWithCleanup(importHTML, (modal) => {
