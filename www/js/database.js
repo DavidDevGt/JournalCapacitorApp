@@ -655,11 +655,29 @@ class DatabaseManager {
 
         const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
 
-        for (const key in obj) {
-            if (dangerousKeys.includes(key)) {
-                throw new Error(`Prohibited key found at ${path}${key}`);
+        if (Array.isArray(obj)) {
+            obj.forEach((item, index) => {
+                this._validateNoPrototypeKeys(item, `${path}[${index}].`);
+            });
+        } else {
+            // Check for prototype pollution
+            if (obj.__proto__ !== Object.prototype) {
+                console.log(`Found prototype pollution at ${path}`);
+                throw new Error(`Prohibited prototype modification at ${path}`);
             }
-            this._validateNoPrototypeKeys(obj[key], `${path}${key}.`);
+            // Check for dangerous own properties
+            for (const key of dangerousKeys) {
+                if (obj.hasOwnProperty(key)) {
+                    console.log(`Found prohibited key ${key} at ${path}${key}`);
+                    throw new Error(`Prohibited key found at ${path}${key}`);
+                }
+            }
+            // Recurse on own properties
+            for (const key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    this._validateNoPrototypeKeys(obj[key], `${path}${key}.`);
+                }
+            }
         }
     }
 
@@ -838,26 +856,38 @@ class DatabaseManager {
         await this._ensureInitialized();
 
         try {
-            this._validateNoPrototypeKeys(data);
             this._validateImportData(data);
 
             let importedCount = 0;
             let skippedCount = 0;
 
-            // Importar entradas
-            for (const entry of data.entries) {
+            // Sanitizar entradas para solo incluir claves válidas
+            const cleanEntries = data.entries.map(entry => ({
+                date: entry.date,
+                content: entry.content || '',
+                mood: entry.mood || null,
+                photoPath: entry.photoPath || entry.photo_path || null,
+                thumbnailPath: entry.thumbnailPath || entry.thumbnail_path || null,
+                tags: entry.tags,
+                weather: entry.weather,
+                location: entry.location,
+                isFavorite: entry.isFavorite || entry.is_favorite || false
+            }));
+
+            // Importar entradas sanitizadas
+            for (const entry of cleanEntries) {
                 try {
                     await this.saveEntry(
                         entry.date,
-                        entry.content || '',
-                        entry.mood || null,
-                        entry.photo_path || entry.photoPath || null,
-                        entry.thumbnail_path || entry.thumbnailPath || null,
+                        entry.content,
+                        entry.mood,
+                        entry.photoPath,
+                        entry.thumbnailPath,
                         {
                             tags: entry.tags,
                             weather: entry.weather,
                             location: entry.location,
-                            isFavorite: entry.is_favorite || entry.isFavorite || false
+                            isFavorite: entry.isFavorite
                         }
                     );
                     importedCount++;
@@ -904,6 +934,10 @@ class DatabaseManager {
                 throw new Error(`Unsupported version: ${data.version}`);
             }
         }
+
+        // Validar contra contaminación de prototipo
+        console.log('Validating import data for prototype pollution');
+        this._validateNoPrototypeKeys(data, '');
 
         data.entries.forEach((entry, index) => {
             if (!entry || typeof entry !== 'object') {
