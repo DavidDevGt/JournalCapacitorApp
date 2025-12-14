@@ -160,7 +160,7 @@ export class VirtualScrollManager {
 
     createItem(entry, index) {
         const swipeWrapper = document.createElement('div');
-        swipeWrapper.className = 'swipe-wrapper relative mb-3';
+        swipeWrapper.className = 'swipe-wrapper relative mb-4 mx-auto max-w-2xl';
         swipeWrapper.style.height = `${this.config.itemHeight}px`;
         swipeWrapper.setAttribute('data-index', index);
 
@@ -175,7 +175,7 @@ export class VirtualScrollManager {
         background.style.opacity = '0.9';
 
         const itemElement = document.createElement('div');
-        itemElement.className = 'virtual-scroll-item z-10';
+        itemElement.className = 'virtual-scroll-item z-10 w-full';
         itemElement.style.height = '100%';
         itemElement.style.willChange = 'transform';
         itemElement.style.touchAction = 'pan-y';
@@ -209,7 +209,7 @@ export class VirtualScrollManager {
         const wordCount = entry.word_count || entry.wordCount || 0;
 
         itemElement.innerHTML = `
-        <div class="entry-card-compact group relative bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 cursor-pointer transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-600 h-full" 
+        <div class="entry-card-compact group relative bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 cursor-pointer transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-600 h-full overflow-hidden"
             onclick="ui.selectDate('${entry.date}')"
             style="min-height: 80px;">
             
