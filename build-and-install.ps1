@@ -1,5 +1,5 @@
 # Script para compilar e instalar la app sin Android Studio
-# Uso: .\build-and-install.ps1
+# Uso: .\build-and-install.ps1 [-BuildType <debug|release>] [-Launch]
 
 param(
     [string]$BuildType = "debug",

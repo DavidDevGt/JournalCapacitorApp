@@ -1,5 +1,6 @@
 import { formatDate, formatDateForStorage, fromISODate } from '../helpers.js';
 import { APP_CONSTANTS } from '../constants/index.js';
+import DOMPurify from 'dompurify';
 
 export class VirtualScrollManager {
     constructor(uiManager) {
@@ -183,7 +184,7 @@ export class VirtualScrollManager {
 
         const date = fromISODate(entry.date);
         const formattedDate = formatDate(date, 'short');
-        const preview = entry.content.substring(0, APP_CONSTANTS.VIRTUAL_SCROLL.CONTENT_PREVIEW_LENGTH) + (entry.content.length > APP_CONSTANTS.VIRTUAL_SCROLL.CONTENT_PREVIEW_LENGTH ? '...' : '');
+        const preview = DOMPurify.sanitize(entry.content.substring(0, APP_CONSTANTS.VIRTUAL_SCROLL.CONTENT_PREVIEW_LENGTH) + (entry.content.length > APP_CONSTANTS.VIRTUAL_SCROLL.CONTENT_PREVIEW_LENGTH ? '...' : ''), { ALLOWED_TAGS: [] });
 
         const moodDisplay = entry.mood ? `
         <div class="mood-indicator flex-shrink-0 w-8 h-8 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center border border-amber-100 dark:border-amber-800/50">

@@ -1,4 +1,5 @@
 import { Toast as CapacitorToast } from '@capacitor/toast';
+import DOMPurify from 'dompurify';
 import { VirtualScrollManager } from './components/VirtualScrollManager';
 import { CalendarManager } from './components/CalendarManager';
 import { NavigationManager } from './components/NavigationManager';
@@ -158,7 +159,7 @@ class UIManager {
     createEntryCard(entry) {
         const date = new Date(entry.date);
         const formattedDate = formatDate(date, 'es-ES', {}, 'short');
-        const preview = entry.content.substring(0, 180) + (entry.content.length > 180 ? '...' : '');
+        const preview = DOMPurify.sanitize(entry.content.substring(0, 180) + (entry.content.length > 180 ? '...' : ''), { ALLOWED_TAGS: [] });
 
         const moodDisplay = entry.mood ? `
         <div class="mood-indicator flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 rounded-2xl flex items-center justify-center shadow-lg border border-amber-200/60 dark:border-amber-700/60 hover:scale-110 transition-transform duration-200">
