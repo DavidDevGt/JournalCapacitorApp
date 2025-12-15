@@ -1,9 +1,10 @@
 import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite';
 import { Capacitor } from '@capacitor/core';
+import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 
 /**
  * Gestiona la base de datos SQLite y localStorage como fallback
-
+ * Incluye cifrado para proteger datos en reposo
  */
 class DatabaseManager {
     static DB_NAME = 'journal_db';
@@ -12,6 +13,9 @@ class DatabaseManager {
     static MAX_RETRY_ATTEMPTS = 3;
     static ALLOWED_SETTINGS = ['darkMode', 'notificationsEnabled', 'notificationTime'];
     static DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+    // Clave maestra (Base64) persistida en almacenamiento seguro nativo.
+    // Se usa como passphrase para SQLCipher y como material de clave para AES-GCM (fallback web/localStorage).
+    static SECURE_STORAGE_MASTER_KEY_B64 = 'journal_master_key_b64_v1';
 
     constructor() {
         this.sqlite = new SQLiteConnection(CapacitorSQLite);
@@ -61,25 +65,147 @@ class DatabaseManager {
     }
 
     /**
+     * Obtiene o genera una clave maestra criptográfica de 256 bits (32 bytes) para SQLCipher.
+     * La clave se almacena en Secure Storage codificada en Base64 (string).
+     * Devuelve siempre la clave en formato Base64.
+     *
+     * Objetivo: evitar errores `invalidData` en almacenamiento nativo almacenando solo strings Base64.
+     * @private
+     * @returns {Promise<string>}
+     */
+    async _getOrGenerateEncryptionKey() {
+        const storageKey = DatabaseManager.SECURE_STORAGE_MASTER_KEY_B64;
+
+        const isValidKeyB64 = (b64) => {
+            if (typeof b64 !== 'string' || !b64.trim()) return false;
+            try {
+                // Debe decodificar a exactamente 32 bytes.
+                const raw = atob(b64);
+                return raw.length === 32;
+            } catch {
+                return false;
+            }
+        };
+
+        // 1) Intentar recuperar clave existente
+        try {
+            const existing = await SecureStorage.getItem(storageKey);
+            if (isValidKeyB64(existing)) return existing;
+        } catch (error) {
+            // Si hay invalidData o corrupción, regeneramos.
+            console.warn('SecureStorage.getItem failed, regenerating encryption key:', error);
+            try {
+                await SecureStorage.removeItem(storageKey);
+            } catch {
+                // noop
+            }
+        }
+
+        // 2) Generar clave 256-bit
+        const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+
+        // 3) Codificar a Base64 (crucial antes de guardar)
+        const keyB64 = btoa(String.fromCharCode(...keyBytes));
+
+        // 4) Persistir como string
+        await SecureStorage.setItem(storageKey, keyB64);
+
+        return keyB64;
+    }
+
+    /**
      * Inicializa SQLite para plataformas nativas
      * @private
      */
     async _initSQLite() {
         await this.sqlite.checkConnectionsConsistency();
 
-        const isConnected = await this.sqlite.isConnection(DatabaseManager.DB_NAME, false);
-
-        if (!isConnected.result) {
-            this.db = await this.sqlite.createConnection(
-                DatabaseManager.DB_NAME,
-                false,
-                'no-encryption',
-                DatabaseManager.DB_VERSION,
-                false
-            );
-        } else {
-            this.db = await this.sqlite.retrieveConnection(DatabaseManager.DB_NAME, false);
+        // Nota: La encriptación real en @capacitor-community/sqlite requiere:
+        // 1) Config de CapacitorSQLite con *IsEncryption=true en capacitor.config.*
+        // 2) Secret almacenado vía setEncryptionSecret()
+        // 3) Conexión creada con encrypted=true y mode="secret"
+        try {
+            const cfg = await this.sqlite.isInConfigEncryption();
+            if (cfg?.result === false) {
+                console.warn('CapacitorSQLite encryption is disabled in capacitor.config.*; database may remain unencrypted');
+            }
+        } catch {
+            // noop
         }
+
+        // 1) Obtener clave maestra segura (Base64) y asegurarnos de registrarla
+        // en el secure store nativo del plugin de SQLite.
+        const masterKeyB64 = await this._getOrGenerateEncryptionKey();
+
+        const secretStored = await this.sqlite.isSecretStored();
+        if (!secretStored?.result) {
+            await this.sqlite.setEncryptionSecret(masterKeyB64);
+        } else {
+            // Validación best-effort (si no coincide, no podemos rotar sin conocer la anterior).
+            try {
+                const ok = await this.sqlite.checkEncryptionSecret(masterKeyB64);
+                if (ok?.result === false) {
+                    console.warn('SQLite encryption secret differs from stored master key; existing encrypted DBs may fail to open');
+                }
+            } catch {
+                // noop
+            }
+        }
+
+        // 2) Si existe DB no-encriptada, migrarla a encriptada (export/import).
+        try {
+            const exists = await this.sqlite.isDatabase(DatabaseManager.DB_NAME);
+            if (exists?.result) {
+                const encrypted = await this.sqlite.isDatabaseEncrypted(DatabaseManager.DB_NAME);
+                if (encrypted?.result === false) {
+                    console.warn('Migrating existing plaintext DB to encrypted DB');
+
+                    const plainDb = await this.sqlite.createConnection(
+                        DatabaseManager.DB_NAME,
+                        false,
+                        'no-encryption',
+                        DatabaseManager.DB_VERSION,
+                        false
+                    );
+                    await plainDb.open();
+                    const exported = await plainDb.exportToJson('full');
+                    await plainDb.close();
+                    try {
+                        await this.sqlite.closeConnection(DatabaseManager.DB_NAME, false);
+                    } catch {
+                        // noop
+                    }
+                    await this.sqlite.deleteDatabase(DatabaseManager.DB_NAME, false);
+
+                    const json = exported?.export;
+                    if (json) {
+                        json.database = DatabaseManager.DB_NAME;
+                        json.version = DatabaseManager.DB_VERSION;
+                        json.overwrite = true;
+                        json.encrypted = true;
+                        json.mode = 'full';
+                        await this.sqlite.importFromJson(JSON.stringify(json));
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('DB encryption migration skipped/failed:', e);
+        }
+
+        // 3) Abrir (o crear) conexión ENCRIPTADA.
+        try {
+            await this.sqlite.closeConnection(DatabaseManager.DB_NAME, false);
+        } catch {
+            // noop
+        }
+
+        this.db = await this.sqlite.createConnection(
+            DatabaseManager.DB_NAME,
+            true,
+            'secret',
+            DatabaseManager.DB_VERSION,
+            false
+        );
 
         await this.db.open();
         await this._createTables();
@@ -248,7 +374,7 @@ class DatabaseManager {
      * @private
      */
     async _saveLocalStorageEntry(date, content, mood, photoPath, thumbnailPath, wordCount, options) {
-        const entries = this._getStoredEntries();
+        const entries = await this._getStoredEntries();
         entries[date] = {
             content,
             mood,
@@ -262,7 +388,7 @@ class DatabaseManager {
             updatedAt: new Date().toISOString()
         };
 
-        this._setStoredEntries(entries);
+        await this._setStoredEntries(entries);
         return { success: true };
     }
 
@@ -295,7 +421,7 @@ class DatabaseManager {
                     }
                 }
             } else {
-                const entries = this._getStoredEntries();
+                const entries = await this._getStoredEntries();
                 entry = entries[date] || null;
             }
 
@@ -327,7 +453,7 @@ class DatabaseManager {
                 );
                 return this._processEntriesResult(result.values || []);
             } else {
-                const entries = this._getStoredEntries();
+                const entries = await this._getStoredEntries();
                 return Object.keys(entries)
                     .map(date => ({ date, ...entries[date] }))
                     .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -386,7 +512,7 @@ class DatabaseManager {
                 );
                 return this._processEntriesResult(result.values || []);
             } else {
-                const entries = this._getStoredEntries();
+                const entries = await this._getStoredEntries();
                 return Object.keys(entries)
                     .filter(date => date >= startDate && date <= endDate)
                     .map(date => ({ date, ...entries[date] }))
@@ -436,7 +562,7 @@ class DatabaseManager {
      * @private
      */
     async _searchLocalStorageEntries(query, filters) {
-        const entries = this._getStoredEntries();
+        const entries = await this._getStoredEntries();
         const lowerQuery = query.toLowerCase();
 
         return Object.keys(entries)
@@ -468,9 +594,9 @@ class DatabaseManager {
             if (this.db) {
                 await this.db.run('DELETE FROM entries WHERE date = ?', [date]);
             } else {
-                const entries = this._getStoredEntries();
+                const entries = await this._getStoredEntries();
                 delete entries[date];
-                this._setStoredEntries(entries);
+                await this._setStoredEntries(entries);
             }
 
             this._clearCacheForEntry(date);
@@ -501,7 +627,7 @@ class DatabaseManager {
                     currentStreak: await this._getCurrentStreak()
                 };
             } else {
-                const entries = this._getStoredEntries();
+                const entries = await this._getStoredEntries();
                 const entriesArray = Object.values(entries);
 
                 return {
@@ -604,33 +730,131 @@ class DatabaseManager {
     }
 
     /**
-     * Obtiene entradas almacenadas en localStorage
+     * Deriva la clave de cifrado desde la passphrase
      * @private
      */
-    _getStoredEntries() {
-        try {
-            const entries = localStorage.getItem(`${DatabaseManager.STORAGE_PREFIX}entries`);
-            if (!entries) return {};
+    async _getEncryptionKey() {
+        // Refactor: en lugar de derivar desde una passphrase hardcodeada,
+        // importamos una clave AES-GCM de 256 bits desde la clave maestra guardada (Base64).
+        const keyB64 = await this._getOrGenerateEncryptionKey();
 
-            const parsed = JSON.parse(entries);
+        let rawKeyBytes;
+        try {
+            const raw = atob(keyB64);
+            rawKeyBytes = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) rawKeyBytes[i] = raw.charCodeAt(i);
+        } catch (error) {
+            console.warn('Invalid Base64 master key, regenerating:', error);
+            try {
+                await SecureStorage.removeItem(DatabaseManager.SECURE_STORAGE_MASTER_KEY_B64);
+            } catch {
+                // noop
+            }
+            const regenerated = await this._getOrGenerateEncryptionKey();
+            const raw = atob(regenerated);
+            rawKeyBytes = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) rawKeyBytes[i] = raw.charCodeAt(i);
+        }
+
+        // Reparación defensiva por si hay datos viejos/corruptos.
+        if (!rawKeyBytes || rawKeyBytes.byteLength !== 32) {
+            try {
+                await SecureStorage.removeItem(DatabaseManager.SECURE_STORAGE_MASTER_KEY_B64);
+            } catch {
+                // noop
+            }
+            const regenerated = await this._getOrGenerateEncryptionKey();
+            const raw = atob(regenerated);
+            rawKeyBytes = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) rawKeyBytes[i] = raw.charCodeAt(i);
+        }
+
+        return crypto.subtle.importKey(
+            'raw',
+            rawKeyBytes,
+            { name: 'AES-GCM' },
+            false,
+            ['encrypt', 'decrypt']
+        );
+    }
+
+    /**
+     * Cifra datos usando AES-GCM
+     * @private
+     */
+    async _encryptData(data) {
+        const key = await this._getEncryptionKey();
+        const encoder = new TextEncoder();
+        const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV
+
+        const encrypted = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            key,
+            encoder.encode(JSON.stringify(data))
+        );
+
+        // Combinar IV + datos cifrados como base64
+        const combined = new Uint8Array(iv.length + encrypted.byteLength);
+        combined.set(iv);
+        combined.set(new Uint8Array(encrypted), iv.length);
+
+        return btoa(String.fromCharCode(...combined));
+    }
+
+    /**
+     * Descifra datos usando AES-GCM
+     * @private
+     */
+    async _decryptData(encryptedStr) {
+        try {
+            const key = await this._getEncryptionKey();
+            const combined = new Uint8Array(atob(encryptedStr).split('').map(c => c.charCodeAt(0)));
+            const iv = combined.slice(0, 12);
+            const encrypted = combined.slice(12);
+
+            const decrypted = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv },
+                key,
+                encrypted
+            );
+
+            const decoder = new TextDecoder();
+            return JSON.parse(decoder.decode(decrypted));
+        } catch (error) {
+            console.warn('Error descifrando datos, asumiendo texto plano:', error);
+            // Si falla el descifrado, asumir que es JSON plano y parsearlo
+            return JSON.parse(encryptedStr);
+        }
+    }
+
+    /**
+     * Obtiene entradas almacenadas en localStorage (cifradas)
+     * @private
+     */
+    async _getStoredEntries() {
+        try {
+            const encrypted = localStorage.getItem(`${DatabaseManager.STORAGE_PREFIX}entries`);
+            if (!encrypted) return {};
+
+            const parsed = await this._decryptData(encrypted);
             return typeof parsed === 'object' && parsed !== null ? parsed : {};
         } catch (error) {
-            console.error('Error parsing stored entries:', error);
-            this._resetStoredEntries();
+            console.error('Error obteniendo entradas almacenadas:', error);
             return {};
         }
     }
 
     /**
-     * Establece entradas en localStorage
+     * Establece entradas en localStorage (cifradas)
      * @private
      */
-    _setStoredEntries(entries) {
+    async _setStoredEntries(entries) {
         try {
-            localStorage.setItem(`${DatabaseManager.STORAGE_PREFIX}entries`, JSON.stringify(entries));
+            const encrypted = await this._encryptData(entries);
+            localStorage.setItem(`${DatabaseManager.STORAGE_PREFIX}entries`, encrypted);
         } catch (error) {
-            console.error('Error setting stored entries:', error);
-            throw new Error('Storage quota exceeded or localStorage unavailable');
+            console.error('Error estableciendo entradas almacenadas:', error);
+            throw new Error('Cuota de almacenamiento excedida o cifrado fallido');
         }
     }
 
@@ -638,11 +862,11 @@ class DatabaseManager {
      * Resetea entradas almacenadas
      * @private
      */
-    _resetStoredEntries() {
+    async _resetStoredEntries() {
         try {
-            localStorage.setItem(`${DatabaseManager.STORAGE_PREFIX}entries`, '{}');
+            await this._setStoredEntries({});
         } catch (error) {
-            console.error('Error resetting stored entries:', error);
+            console.error('Error reseteando entradas almacenadas:', error);
         }
     }
 

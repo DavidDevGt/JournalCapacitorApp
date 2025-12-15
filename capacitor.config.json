@@ -4,6 +4,10 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "plugins": {
+    "CapacitorSQLite": {
+      "androidIsEncryption": true,
+      "iosIsEncryption": true
+    },
     
     "Camera": {
       "permissions": [
